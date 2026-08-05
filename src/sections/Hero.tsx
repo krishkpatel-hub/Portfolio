@@ -26,7 +26,6 @@ export function Hero({ personal }: HeroProps) {
   return (
     <section id="top" className="relative min-h-screen overflow-hidden pt-16">
       <HeroSoundtrack reducedMotion={Boolean(reducedMotion)} />
-      <div className="technical-grid absolute inset-0 opacity-80" aria-hidden="true" />
       <div className="absolute inset-x-0 top-28 h-px bg-[color:var(--line-strong)]" aria-hidden="true" />
       <div className="absolute bottom-0 left-0 h-64 w-full bg-gradient-to-t from-black to-transparent" aria-hidden="true" />
 

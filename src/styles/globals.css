@@ -283,17 +283,19 @@ a {
   transform: scale(1.012);
 }
 
-.hero-audio-grid {
+.hero-wavy-dot-field {
   position: absolute;
   inset: 0;
   z-index: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  opacity: 0.72;
+  opacity: 0.82;
   mask-image:
-    radial-gradient(ellipse at 50% 78%, black 0%, rgba(0, 0, 0, 0.72) 34%, transparent 78%),
-    linear-gradient(to bottom, transparent 0%, black 38%, black 100%);
+    radial-gradient(ellipse at 52% 72%, black 0%, rgba(0, 0, 0, 0.86) 38%, rgba(0, 0, 0, 0.34) 58%, transparent 84%),
+    linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.18) 12%, black 34%, black 84%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 15%, black 84%, transparent 100%);
+  contain: strict;
 }
 
 .hero-soundtrack {

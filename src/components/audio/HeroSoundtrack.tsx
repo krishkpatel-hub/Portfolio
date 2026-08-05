@@ -11,7 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { AudioDotGrid } from './AudioDotGrid';
+import { WavyDotField } from './WavyDotField';
 import { playlistLabel, playlistTracks, type PlaylistTrack } from '../../data/playlist';
 import { cn } from '../../lib/utils';
 
@@ -495,7 +495,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
 
   return (
     <>
-      <AudioDotGrid analyserRef={analyserRef} isPlaying={playbackState === 'playing'} reducedMotion={reducedMotion} />
+      <WavyDotField analyserRef={analyserRef} isPlaying={playbackState === 'playing'} reducedMotion={reducedMotion} />
       <div className="hero-soundtrack" ref={playlistRef}>
         <div className="sr-only" aria-live="polite">
           {announcement}
