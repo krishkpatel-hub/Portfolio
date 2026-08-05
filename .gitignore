@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+.env
+.env.*
+!.env.example
+*.local
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tsbuildinfo
