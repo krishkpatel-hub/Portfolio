@@ -26,13 +26,15 @@ export function Navigation({ nav, personal }: NavigationProps) {
         <div className="hidden items-center gap-1 lg:flex">
           {nav.map((item) => {
             const id = item.href.slice(1);
+            const active = activeSection === id;
             return (
               <a
                 key={item.href}
                 href={item.href}
+                aria-current={active ? 'location' : undefined}
                 className={cn(
-                  'rounded-full px-3 py-2 font-mono text-[0.72rem] uppercase tracking-normal transition-colors',
-                  activeSection === id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white',
+                  'nav-link relative px-3 py-2 font-mono text-[0.72rem] uppercase tracking-normal transition-colors',
+                  active ? 'is-active text-white' : 'text-zinc-400 hover:text-white',
                 )}
               >
                 {item.label}
@@ -62,16 +64,23 @@ export function Navigation({ nav, personal }: NavigationProps) {
       >
         <div className="overflow-hidden">
           <div className="mx-auto grid w-[min(1180px,calc(100%-2rem))] gap-2 py-4">
-            {nav.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                onClick={handleNavigate}
-                className="rounded-md border border-white/10 px-4 py-3 font-mono text-sm uppercase tracking-normal text-zinc-200"
-              >
-                {item.label}
-              </a>
-            ))}
+            {nav.map((item) => {
+              const active = activeSection === item.href.slice(1);
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? 'location' : undefined}
+                  onClick={handleNavigate}
+                  className={cn(
+                    'mobile-nav-link rounded-md border border-white/10 px-4 py-3 font-mono text-sm uppercase tracking-normal text-zinc-200',
+                    active && 'is-active',
+                  )}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
           </div>
         </div>
       </div>

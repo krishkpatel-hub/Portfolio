@@ -10,7 +10,7 @@ import {
   VolumeX,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { AudioDotGrid } from './AudioDotGrid';
 import { playlistLabel, playlistTracks, type PlaylistTrack } from '../../data/playlist';
 import { cn } from '../../lib/utils';
@@ -29,6 +29,11 @@ function formatTime(value: number) {
   const minutes = Math.floor(value / 60);
   const seconds = Math.floor(value % 60);
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatDuration(value: number | undefined) {
+  if (!Number.isFinite(value) || !value || value <= 0) return '--:--';
+  return formatTime(value);
 }
 
 function getStoredVolume() {
@@ -50,6 +55,9 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const playlistRef = useRef<HTMLDivElement | null>(null);
+  const trackListRef = useRef<HTMLDivElement | null>(null);
+  const playlistToggleRef = useRef<HTMLButtonElement | null>(null);
+  const trackButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const playTrackRef = useRef<(index?: number, fromAutoAdvance?: boolean) => Promise<void>>(async () => undefined);
   const getNextIndexRef = useRef<(direction: 1 | -1, allowShuffle?: boolean) => number>(() => 0);
   const markUnavailableRef = useRef<(track: PlaylistTrack) => void>(() => undefined);
@@ -57,6 +65,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   const shuffleRef = useRef(false);
   const unavailableRef = useRef<Set<string>>(new Set());
   const intentionallyPlayingRef = useRef(false);
+  const touchYRef = useRef<number | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('paused');
@@ -82,6 +91,13 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
     [],
   );
 
+  const closePlaylist = useCallback((restoreFocus = true) => {
+    setPlaylistOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => playlistToggleRef.current?.focus());
+    }
+  }, [setPlaylistOpen]);
+
   useEffect(() => {
     shuffleRef.current = shuffleEnabled;
     window.localStorage.setItem(shuffleKey, String(shuffleEnabled));
@@ -106,12 +122,15 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!playlistRef.current?.contains(event.target as Node)) {
-        setPlaylistOpen(false);
+        closePlaylist(false);
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setPlaylistOpen(false);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closePlaylist();
+      }
     };
 
     document.addEventListener('pointerdown', handlePointerDown);
@@ -120,6 +139,66 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closePlaylist, playlistOpen]);
+
+  useEffect(() => {
+    if (!playlistOpen) return;
+
+    window.requestAnimationFrame(() => {
+      const selectedButton = trackButtonRefs.current[currentIndexRef.current];
+      selectedButton?.focus({ preventScroll: true });
+      selectedButton?.scrollIntoView({ block: 'nearest' });
+      if (!selectedButton) trackListRef.current?.focus({ preventScroll: true });
+    });
+  }, [playlistOpen]);
+
+  useEffect(() => {
+    if (!playlistOpen) return undefined;
+
+    const list = trackListRef.current;
+    if (!list) return undefined;
+
+    const scrollByDelta = (deltaY: number) => {
+      const maxScroll = list.scrollHeight - list.clientHeight;
+      if (maxScroll <= 0) return false;
+
+      const previous = list.scrollTop;
+      list.scrollTop = Math.min(maxScroll, Math.max(0, previous + deltaY));
+      return list.scrollTop !== previous;
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      if (scrollByDelta(event.deltaY)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      touchYRef.current = event.touches[0]?.clientY ?? null;
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const previousY = touchYRef.current;
+      const nextY = event.touches[0]?.clientY ?? null;
+      if (previousY === null || nextY === null) return;
+
+      if (scrollByDelta(previousY - nextY)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      touchYRef.current = nextY;
+    };
+
+    list.addEventListener('wheel', handleWheel, { passive: false });
+    list.addEventListener('touchstart', handleTouchStart, { passive: true });
+    list.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      list.removeEventListener('wheel', handleWheel);
+      list.removeEventListener('touchstart', handleTouchStart);
+      list.removeEventListener('touchmove', handleTouchMove);
     };
   }, [playlistOpen]);
 
@@ -291,6 +370,12 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
       }
     };
 
+    const handleDurationChange = () => {
+      if (Number.isFinite(audio.duration)) {
+        setDurations((previous) => ({ ...previous, [playlistTracks[currentIndexRef.current].id]: audio.duration }));
+      }
+    };
+
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
     };
@@ -319,6 +404,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
     };
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('durationchange', handleDurationChange);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('waiting', handleWaiting);
     audio.addEventListener('playing', handlePlaying);
@@ -332,6 +418,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
       audio.removeAttribute('src');
       audio.load();
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('durationchange', handleDurationChange);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('waiting', handleWaiting);
       audio.removeEventListener('playing', handlePlaying);
@@ -346,6 +433,66 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const metadataAudios = playlistTracks.map((track) => {
+      const audio = new Audio();
+      const updateDuration = () => {
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          setDurations((previous) => ({ ...previous, [track.id]: audio.duration }));
+        }
+      };
+
+      audio.preload = 'metadata';
+      audio.addEventListener('loadedmetadata', updateDuration);
+      audio.addEventListener('durationchange', updateDuration);
+      audio.src = track.source;
+      audio.load();
+
+      return { audio, updateDuration };
+    });
+
+    return () => {
+      metadataAudios.forEach(({ audio, updateDuration }) => {
+        audio.removeEventListener('loadedmetadata', updateDuration);
+        audio.removeEventListener('durationchange', updateDuration);
+        audio.removeAttribute('src');
+        audio.load();
+      });
+    };
+  }, []);
+
+  const focusTrack = (index: number) => {
+    trackButtonRefs.current[index]?.focus();
+    trackButtonRefs.current[index]?.scrollIntoView({ block: 'nearest' });
+  };
+
+  const handleTrackListKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const enabledIndexes = numberedTracks
+      .map((track, index) => ({ track, index }))
+      .filter(({ track }) => !unavailableIds.includes(track.id))
+      .map(({ index }) => index);
+
+    if (!enabledIndexes.length) return;
+
+    const focusedIndex = trackButtonRefs.current.findIndex((button) => button === document.activeElement);
+    const activeIndex = focusedIndex >= 0 ? focusedIndex : currentIndex;
+    const currentPosition = Math.max(0, enabledIndexes.indexOf(activeIndex));
+    const visibleStep = 4;
+
+    const moveTo = (position: number) => {
+      event.preventDefault();
+      const clamped = Math.min(enabledIndexes.length - 1, Math.max(0, position));
+      focusTrack(enabledIndexes[clamped] ?? enabledIndexes[0]);
+    };
+
+    if (event.key === 'ArrowDown') moveTo(currentPosition + 1);
+    if (event.key === 'ArrowUp') moveTo(currentPosition - 1);
+    if (event.key === 'PageDown') moveTo(currentPosition + visibleStep);
+    if (event.key === 'PageUp') moveTo(currentPosition - visibleStep);
+    if (event.key === 'Home') moveTo(0);
+    if (event.key === 'End') moveTo(enabledIndexes.length - 1);
+  };
+
   return (
     <>
       <AudioDotGrid analyserRef={analyserRef} isPlaying={playbackState === 'playing'} reducedMotion={reducedMotion} />
@@ -356,13 +503,23 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
 
         {playlistOpen ? (
           <div className="soundtrack-playlist" role="dialog" aria-label={`${playlistLabel} playlist`}>
-            <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="soundtrack-playlist-header">
               <p className="font-mono text-xs uppercase tracking-normal soft-dim">{playlistLabel}</p>
-              <button type="button" className="soundtrack-icon-button" aria-label="Close playlist" onClick={() => setPlaylistOpen(false)}>
+              <button type="button" className="soundtrack-icon-button" aria-label="Close playlist" onClick={() => closePlaylist()}>
                 <X size={16} />
               </button>
             </div>
-            <div className="max-h-72 overflow-y-auto pr-1">
+            <div
+              ref={trackListRef}
+              className="soundtrack-track-list"
+              tabIndex={-1}
+              role="listbox"
+              aria-label={`${playlistLabel} tracks`}
+              data-lenis-prevent
+              data-lenis-prevent-wheel
+              data-lenis-prevent-touch
+              onKeyDown={handleTrackListKeyDown}
+            >
               {numberedTracks.map((track, index) => {
                 const selected = index === currentIndex;
                 const trackUnavailable = unavailableIds.includes(track.id);
@@ -370,8 +527,13 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
                   <button
                     type="button"
                     key={track.id}
+                    ref={(element) => {
+                      trackButtonRefs.current[index] = element;
+                    }}
                     className={cn('soundtrack-track-button', selected && 'is-selected')}
                     aria-current={selected ? 'true' : undefined}
+                    role="option"
+                    aria-selected={selected}
                     onClick={() => selectTrack(index)}
                     disabled={trackUnavailable}
                   >
@@ -382,7 +544,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
                         {trackUnavailable ? 'Track unavailable' : selected && playbackState === 'playing' ? 'Now playing' : track.artist}
                       </span>
                     </span>
-                    <span className="font-mono text-[0.66rem] soft-dim">{formatTime(durations[track.id] ?? 0)}</span>
+                    <span className="font-mono text-[0.66rem] soft-dim">{formatDuration(durations[track.id])}</span>
                   </button>
                 );
               })}
@@ -414,7 +576,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
                 {unavailable || playbackState === 'unavailable' ? 'Track unavailable' : currentTrack.title}
               </p>
               <p className="shrink-0 font-mono text-[0.66rem] soft-dim">
-                {formatTime(currentTime)} / {formatTime(duration)}
+                {formatTime(currentTime)} / {formatDuration(duration)}
               </p>
             </div>
             <input
@@ -465,10 +627,11 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
 
           <button
             type="button"
+            ref={playlistToggleRef}
             className={cn('soundtrack-icon-button', playlistOpen && 'is-active')}
             aria-label={playlistOpen ? 'Close playlist' : 'Open playlist'}
             aria-expanded={playlistOpen}
-            onClick={() => setPlaylistOpen((value) => !value)}
+            onClick={() => (playlistOpen ? closePlaylist() : setPlaylistOpen(true))}
           >
             <ListMusic size={16} />
           </button>
