@@ -10,7 +10,7 @@ export const portfolioData: PortfolioData = {
     location: 'Edison, New Jersey',
     focus: 'Software engineering, full-stack development, data systems, automation, and practical operational products',
     availability: 'Open to software engineering opportunities',
-    canonicalUrl: 'https://example.com',
+    canonicalUrl: 'https://portfolio-krish-patel1.vercel.app/',
     socials: [
       { label: 'GitHub', href: 'https://github.com/krishkpatel-hub', type: 'github' },
       { label: 'LinkedIn', href: 'https://linkedin.com/in/krish-patel', type: 'linkedin' },

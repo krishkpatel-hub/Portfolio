@@ -22,7 +22,7 @@ All editable portfolio content lives in `src/data/portfolio.ts`. Update educatio
 
 The portfolio intentionally omits street address, phone number, unsupported project links, and unverified certifications. Add project URLs or credential details only when they are ready to publish.
 
-Keep the placeholder domain `https://example.com` updated before publishing. Also update `public/robots.txt`, `public/sitemap.xml`, and the metadata in `index.html` with the final domain.
+The production domain is `https://portfolio-krish-patel1.vercel.app/`. Keep `public/robots.txt`, `public/sitemap.xml`, `src/data/portfolio.ts`, and the metadata in `index.html` aligned with that URL.
 
 ## Motion
 
