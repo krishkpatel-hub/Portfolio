@@ -541,6 +541,51 @@ section[id] {
   height: 54px;
 }
 
+.smooth-scroll-indicator {
+  position: fixed;
+  top: 54%;
+  right: clamp(1rem, 1.6vw, 1.5rem);
+  z-index: 35;
+  width: 3px;
+  height: 116px;
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0.34;
+  background: rgba(231, 229, 228, 0.075);
+  box-shadow: inset 0 0 0 1px rgba(231, 229, 228, 0.045);
+  transform: translateY(-50%);
+  transition:
+    opacity 220ms ease,
+    background-color 220ms ease;
+}
+
+.smooth-scroll-indicator[data-active="true"] {
+  opacity: 0.78;
+  background: rgba(231, 229, 228, 0.105);
+}
+
+.smooth-scroll-indicator[data-hidden="true"] {
+  opacity: 0;
+}
+
+.smooth-scroll-indicator-thumb {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 5px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(231, 229, 228, 0.52);
+  box-shadow: 0 0 18px rgba(231, 229, 228, 0.08);
+  transform: translate3d(0, 0, 0);
+  translate: -50% 0;
+  will-change: transform;
+}
+
+.smooth-scroll-indicator[data-active="true"] .smooth-scroll-indicator-thumb {
+  background: rgba(236, 234, 229, 0.72);
+}
+
 .text-white {
   color: var(--text-strong) !important;
 }
@@ -587,6 +632,10 @@ section[id] {
     display: none;
   }
 
+  .smooth-scroll-indicator {
+    transition: none;
+  }
+
   *,
   *::before,
   *::after {
@@ -599,7 +648,8 @@ section[id] {
 
 @media (pointer: coarse), (hover: none), print {
   .cursor-dot,
-  .cursor-ring {
+  .cursor-ring,
+  .smooth-scroll-indicator {
     display: none;
   }
 }

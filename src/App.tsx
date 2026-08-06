@@ -3,6 +3,7 @@ import { JsonLd } from './components/layout/JsonLd';
 import { Footer } from './components/layout/Footer';
 import { Navigation } from './components/layout/Navigation';
 import { CursorFollower } from './components/ui/CursorFollower';
+import { SmoothScrollIndicator } from './components/ui/SmoothScrollIndicator';
 import { portfolioData } from './data/portfolio';
 import { useLenisScroll } from './hooks/useLenisScroll';
 import { About } from './sections/About';
@@ -23,6 +24,7 @@ function App() {
     <>
       <JsonLd personal={portfolioData.personal} />
       <CursorFollower />
+      <SmoothScrollIndicator reducedMotion={reducedMotion} />
       <a className="skip-link" href="#about">
         Skip to content
       </a>
