@@ -24,7 +24,7 @@ export const portfolioData: PortfolioData = {
     { label: 'Experience', href: '#experience' },
     { label: 'Leadership', href: '#leadership' },
     { label: 'Projects', href: '#projects' },
-    { label: 'Notes', href: '#posts' },
+    { label: 'Notes', href: '#notes' },
     { label: 'Contact', href: '#contact' },
   ],
   education: {

@@ -1,8 +1,9 @@
 import { Menu, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { NavItem, PersonalDetails } from '../../types/portfolio';
 import { cn } from '../../lib/utils';
 import { useActiveSection } from '../../hooks/useActiveSection';
+import { getScrollController, scrollToHash } from '../../lib/scrollNavigation';
 
 interface NavigationProps {
   nav: NavItem[];
@@ -15,11 +16,25 @@ export function Navigation({ nav, personal }: NavigationProps) {
   const activeSection = useActiveSection(sectionIds);
 
   const handleNavigate = () => setOpen(false);
+  const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    setOpen(false);
+    if (!getScrollController()) return;
+    if (scrollToHash(href, { history: 'push' })) {
+      event.preventDefault();
+    }
+  };
+
+  const handleNavKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
+    if (event.key === ' ') {
+      event.preventDefault();
+      event.currentTarget.click();
+    }
+  };
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-black/55 backdrop-blur-xl">
+    <header data-site-header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-black/55 backdrop-blur-xl">
       <nav className="mx-auto flex h-16 w-[min(1180px,calc(100%-2rem))] items-center justify-between" aria-label="Primary navigation">
-        <a href="#top" className="font-mono text-xs font-semibold uppercase tracking-normal text-white">
+        <a href="#top" onClick={(event) => handleNavClick(event, '#top')} onKeyDown={handleNavKeyDown} className="font-mono text-xs font-semibold uppercase tracking-normal text-white">
           {personal.name}
         </a>
 
@@ -32,6 +47,8 @@ export function Navigation({ nav, personal }: NavigationProps) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'location' : undefined}
+                onClick={(event) => handleNavClick(event, item.href)}
+                onKeyDown={handleNavKeyDown}
                 className={cn(
                   'nav-link relative px-3 py-2 font-mono text-[0.72rem] uppercase tracking-normal transition-colors',
                   active ? 'is-active text-white' : 'text-zinc-400 hover:text-white',
@@ -71,7 +88,11 @@ export function Navigation({ nav, personal }: NavigationProps) {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? 'location' : undefined}
-                  onClick={handleNavigate}
+                  onClick={(event) => {
+                    handleNavigate();
+                    handleNavClick(event, item.href);
+                  }}
+                  onKeyDown={handleNavKeyDown}
                   className={cn(
                     'mobile-nav-link rounded-md border border-white/10 px-4 py-3 font-mono text-sm uppercase tracking-normal text-zinc-200',
                     active && 'is-active',

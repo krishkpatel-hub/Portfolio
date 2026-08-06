@@ -9,7 +9,7 @@ interface PostsProps {
 
 export function Posts({ posts }: PostsProps) {
   return (
-    <section id="posts" className="section-shell">
+    <section id="notes" className="section-shell">
       <Reveal>
         <p className="section-kicker">notes.browser</p>
         <h2 className="section-title">Technical notes staged like deploy artifacts.</h2>

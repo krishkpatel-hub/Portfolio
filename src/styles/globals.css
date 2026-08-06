@@ -23,6 +23,7 @@
   --surface-tint-strong: rgba(231, 229, 228, 0.085);
   --success: #8fffbd;
   --warning: #f5d78c;
+  --header-scroll-offset: 5.125rem;
 }
 
 * {
@@ -31,6 +32,7 @@
 
 html {
   scroll-behavior: auto;
+  scroll-padding-top: var(--header-scroll-offset);
   background: var(--bg);
 }
 
@@ -95,9 +97,14 @@ a {
 }
 
 .section-shell {
+  scroll-margin-top: var(--header-scroll-offset);
   width: min(1180px, calc(100% - 2rem));
   margin-inline: auto;
   padding-block: clamp(5rem, 12vw, 10rem);
+}
+
+section[id] {
+  scroll-margin-top: var(--header-scroll-offset);
 }
 
 .section-kicker {
