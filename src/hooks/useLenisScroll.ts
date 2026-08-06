@@ -56,9 +56,13 @@ export function useLenisScroll(reducedMotion: boolean) {
     }
 
     const lenis = new Lenis({
-      lerp: 0.1,
+      lerp: 0.075,
       smoothWheel: true,
       syncTouch: false,
+      infinite: false,
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      wheelMultiplier: 0.9,
       anchors: false,
       autoRaf: false,
       prevent: (node) => Boolean(node.closest('[data-lenis-prevent], [data-lenis-prevent-wheel], [data-lenis-prevent-touch]')),

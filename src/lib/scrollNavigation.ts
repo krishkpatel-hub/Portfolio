@@ -7,7 +7,8 @@ interface ScrollOptions {
   immediate?: boolean;
 }
 
-const navLerp = 0.105;
+const navDuration = 1.12;
+const navEaseOut = (time: number) => 1 - (1 - time) ** 3;
 
 let activeLenis: Lenis | null = null;
 let reducedMotionActive = false;
@@ -64,7 +65,8 @@ export function scrollToHash(hash: string, { history = 'push', immediate = false
     activeLenis.scrollTo(target, {
       offset: -getHeaderOffset(),
       immediate,
-      lerp: immediate ? 1 : navLerp,
+      duration: immediate ? 0 : navDuration,
+      easing: navEaseOut,
       lock: false,
       force: true,
       userData: { source: 'section-navigation' },
