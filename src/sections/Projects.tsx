@@ -63,18 +63,18 @@ export function Projects({ projects, reducedMotion }: ProjectsProps) {
   }, [reducedMotion]);
 
   return (
-    <section id="projects" ref={sectionRef} className="overflow-hidden py-[clamp(5rem,12vw,10rem)]">
+    <section id="projects" ref={sectionRef} className="projects-section overflow-hidden">
       <div className="mx-auto w-[min(1180px,calc(100%-2rem))]">
         <Reveal>
           <p className="section-kicker">projects.sequence</p>
-          <h2 className="section-title">Selected builds in a horizontal release lane.</h2>
+          <h2 className="section-title projects-section-title">Selected projects.</h2>
         </Reveal>
-        <div className="mt-10 h-1 overflow-hidden rounded-full bg-white/10 md:mt-14">
+        <div className="projects-section-progress h-1 overflow-hidden rounded-full bg-white/10">
           <div ref={progressRef} className="h-full origin-left scale-x-0 bg-white" />
         </div>
       </div>
 
-      <div ref={trackRef} className="mx-auto mt-8 grid w-[min(1180px,calc(100%-2rem))] gap-5 md:flex md:w-max md:px-[calc((100vw-min(1180px,calc(100vw-2rem)))/2)]">
+      <div ref={trackRef} className="projects-section-track mx-auto grid w-[min(1180px,calc(100%-2rem))] gap-5 md:flex md:w-max md:px-[calc((100vw-min(1180px,calc(100vw-2rem)))/2)]">
         {projects.map((project, index) => (
           <article
             key={project.title}

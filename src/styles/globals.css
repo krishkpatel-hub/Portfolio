@@ -126,6 +126,22 @@ section[id] {
   text-shadow: 0 0 30px rgba(231, 229, 228, 0.08);
 }
 
+.projects-section {
+  padding-block: clamp(4.5rem, 9vw, 8rem);
+}
+
+.projects-section-title {
+  max-width: 620px;
+}
+
+.projects-section-progress {
+  margin-top: clamp(2rem, 4vw, 3rem);
+}
+
+.projects-section-track {
+  margin-top: clamp(1.75rem, 3vw, 2.25rem);
+}
+
 .technical-grid {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
