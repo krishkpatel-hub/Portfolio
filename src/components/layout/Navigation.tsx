@@ -3,7 +3,7 @@ import { useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { NavItem, PersonalDetails } from '../../types/portfolio';
 import { cn } from '../../lib/utils';
 import { useActiveSection } from '../../hooks/useActiveSection';
-import { getScrollController, scrollToHash } from '../../lib/scrollNavigation';
+import { scrollToHash } from '../../lib/scrollNavigation';
 
 interface NavigationProps {
   nav: NavItem[];
@@ -17,10 +17,17 @@ export function Navigation({ nav, personal }: NavigationProps) {
 
   const handleNavigate = () => setOpen(false);
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    event.preventDefault();
+    const wasOpen = open;
     setOpen(false);
-    if (!getScrollController()) return;
-    if (scrollToHash(href, { history: 'push' })) {
-      event.preventDefault();
+    const scrollToSection = () => {
+      scrollToHash(href, { history: 'push' });
+    };
+
+    if (wasOpen) {
+      window.setTimeout(scrollToSection, 260);
+    } else {
+      window.requestAnimationFrame(scrollToSection);
     }
   };
 
@@ -33,7 +40,7 @@ export function Navigation({ nav, personal }: NavigationProps) {
 
   return (
     <header data-site-header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-black/55 backdrop-blur-xl">
-      <nav className="mx-auto flex h-16 w-[min(1180px,calc(100%-2rem))] items-center justify-between" aria-label="Primary navigation">
+      <nav data-site-header-bar className="mx-auto flex h-16 w-[min(1180px,calc(100%-2rem))] items-center justify-between" aria-label="Primary navigation">
         <a href="#top" onClick={(event) => handleNavClick(event, '#top')} onKeyDown={handleNavKeyDown} className="font-mono text-xs font-semibold uppercase tracking-normal text-white">
           {personal.name}
         </a>

@@ -22,6 +22,9 @@ const emptyPoints: PointBuffers = {
   count: 0,
 };
 
+const maxDevicePixelRatio = 1.5;
+const targetFrameInterval = 1000 / 48;
+
 function averageBand(data: ArrayLike<number>, startRatio: number, endRatio: number) {
   const start = Math.floor(data.length * startRatio);
   const end = Math.max(start + 1, Math.floor(data.length * endRatio));
@@ -44,6 +47,7 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
   const pointsRef = useRef<PointBuffers>(emptyPoints);
   const frequencyDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const visibleRef = useRef(true);
+  const documentVisibleRef = useRef(true);
   const isPlayingRef = useRef(isPlaying);
   const reducedMotionRef = useRef(reducedMotion);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
@@ -51,6 +55,7 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
   const pointerRef = useRef({ active: false, x: 0.5, y: 0.72, sx: 0.5, sy: 0.72 });
   const finePointerRef = useRef(false);
   const sizeRef = useRef({ width: 0, height: 0, dpr: 1, mobile: false, tablet: false });
+  const lastFrameTimeRef = useRef(0);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -73,12 +78,12 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
 
     const buildField = () => {
       const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, maxDevicePixelRatio);
       const width = Math.max(1, Math.floor(rect.width));
       const height = Math.max(1, Math.floor(rect.height));
       const mobile = width < 640;
       const tablet = width >= 640 && width < 1024;
-      const spacing = mobile ? 26 : tablet ? 22 : 18;
+      const spacing = mobile ? 30 : tablet ? 24 : 20;
       const columns = Math.ceil(width / spacing) + 2;
       const rows = Math.ceil(height / spacing) + 2;
       const count = columns * rows;
@@ -221,7 +226,17 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
     };
 
     const animate = (time: number) => {
-      draw(time);
+      const shouldRender = documentVisibleRef.current && (visibleRef.current || isPlayingRef.current);
+
+      if (!shouldRender) {
+        frameRef.current = null;
+        return;
+      }
+
+      if (time - lastFrameTimeRef.current >= targetFrameInterval) {
+        lastFrameTimeRef.current = time;
+        draw(time);
+      }
 
       if (!reducedMotionRef.current && (visibleRef.current || isPlayingRef.current)) {
         frameRef.current = requestAnimationFrame(animate);
@@ -240,6 +255,15 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       if (frameRef.current !== null) {
         cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      documentVisibleRef.current = document.visibilityState !== 'hidden';
+      if (documentVisibleRef.current && (visibleRef.current || isPlayingRef.current)) {
+        start();
+      } else {
+        stop();
       }
     };
 
@@ -287,6 +311,7 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
 
     canvas.parentElement?.addEventListener('pointermove', handlePointerMove);
     canvas.parentElement?.addEventListener('pointerleave', handlePointerLeave);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     if (!reducedMotionRef.current) start();
 
@@ -297,6 +322,7 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       finePointerQuery.removeEventListener('change', handlePointerCapabilityChange);
       canvas.parentElement?.removeEventListener('pointermove', handlePointerMove);
       canvas.parentElement?.removeEventListener('pointerleave', handlePointerLeave);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [analyserRef]);
 

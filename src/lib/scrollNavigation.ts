@@ -23,7 +23,7 @@ export function getScrollController() {
 }
 
 export function getHeaderOffset() {
-  const header = document.querySelector<HTMLElement>('[data-site-header]');
+  const header = document.querySelector<HTMLElement>('[data-site-header-bar], [data-site-header]');
   const measuredHeight = header?.getBoundingClientRect().height ?? 64;
   return Math.ceil(measuredHeight + 18);
 }

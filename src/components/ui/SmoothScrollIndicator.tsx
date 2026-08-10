@@ -60,43 +60,60 @@ export function SmoothScrollIndicator({ reducedMotion }: SmoothScrollIndicatorPr
       progress.target = readProgress();
       const easing = reducedMotion ? 1 : 0.34;
       progress.rendered += (progress.target - progress.rendered) * easing;
-      if (Math.abs(progress.target - progress.rendered) < 0.0008) {
+      const remaining = Math.abs(progress.target - progress.rendered);
+      if (remaining < 0.0008) {
         progress.rendered = progress.target;
       }
 
       thumb.style.transform = `translate3d(0, ${progress.rendered * travel}px, 0)`;
-      frameRef.current = window.requestAnimationFrame(render);
+      if (remaining < 0.0008 && rail.dataset.active !== 'true') {
+        frameRef.current = null;
+      } else {
+        frameRef.current = window.requestAnimationFrame(render);
+      }
+    };
+
+    const startRender = () => {
+      if (frameRef.current === null) {
+        frameRef.current = window.requestAnimationFrame(render);
+      }
     };
 
     const handleScrollActivity = () => {
       updateDocumentHeight();
       setActive(true);
       scheduleIdle();
+      startRender();
     };
 
-    const resizeObserver = new ResizeObserver(updateDocumentHeight);
+    const handleResize = () => {
+      updateDocumentHeight();
+      startRender();
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(document.documentElement);
     resizeObserver.observe(document.body);
 
     const lenis = getScrollController();
     lenis?.on('scroll', handleScrollActivity);
     window.addEventListener('scroll', handleScrollActivity, { passive: true });
-    window.addEventListener('resize', updateDocumentHeight);
-    window.addEventListener('orientationchange', updateDocumentHeight);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
 
     updateDocumentHeight();
     progressRef.current.target = readProgress();
     progressRef.current.rendered = progressRef.current.target;
     thumb.style.transform = `translate3d(0, ${progressRef.current.rendered * travel}px, 0)`;
-    frameRef.current = window.requestAnimationFrame(render);
+    startRender();
 
     return () => {
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
       if (idleTimeoutRef.current !== null) window.clearTimeout(idleTimeoutRef.current);
       lenis?.off('scroll', handleScrollActivity);
       window.removeEventListener('scroll', handleScrollActivity);
-      window.removeEventListener('resize', updateDocumentHeight);
-      window.removeEventListener('orientationchange', updateDocumentHeight);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
       resizeObserver.disconnect();
     };
   }, [reducedMotion]);

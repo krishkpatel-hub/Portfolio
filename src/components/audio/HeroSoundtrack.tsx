@@ -23,6 +23,7 @@ type PlaybackState = 'paused' | 'playing' | 'loading' | 'unavailable';
 
 const volumeKey = 'portfolio-soundtrack-volume';
 const shuffleKey = 'portfolio-soundtrack-shuffle';
+const startupVolume = 0.4;
 
 function formatTime(value: number) {
   if (!Number.isFinite(value) || value <= 0) return '0:00';
@@ -36,9 +37,13 @@ function formatDuration(value: number | undefined) {
   return formatTime(value);
 }
 
-function getStoredVolume() {
-  const stored = Number(window.localStorage.getItem(volumeKey));
-  return Number.isFinite(stored) ? Math.min(1, Math.max(0, stored)) : 0.72;
+interface PlayOptions {
+  userInitiated?: boolean;
+  allowAutoplayBlock?: boolean;
+}
+
+function getStartupVolume() {
+  return startupVolume;
 }
 
 function getStoredShuffle() {
@@ -47,6 +52,14 @@ function getStoredShuffle() {
 
 function pickRandomTrackIndex(choices: Array<{ index: number }>) {
   return choices[Math.floor(Math.random() * choices.length)].index;
+}
+
+function isAutoplayBlockedError(error: unknown) {
+  if (error instanceof DOMException) {
+    return error.name === 'NotAllowedError' || error.name === 'SecurityError';
+  }
+
+  return error instanceof Error && error.message === 'AudioContext resume timed out';
 }
 
 export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
@@ -58,13 +71,18 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   const trackListRef = useRef<HTMLDivElement | null>(null);
   const playlistToggleRef = useRef<HTMLButtonElement | null>(null);
   const trackButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const playTrackRef = useRef<(index?: number, fromAutoAdvance?: boolean) => Promise<void>>(async () => undefined);
+  const playTrackRef = useRef<(index?: number, fromAutoAdvance?: boolean, options?: PlayOptions) => Promise<boolean>>(async () => false);
   const getNextIndexRef = useRef<(direction: 1 | -1, allowShuffle?: boolean) => number>(() => 0);
   const markUnavailableRef = useRef<(track: PlaylistTrack) => void>(() => undefined);
   const currentIndexRef = useRef(0);
   const shuffleRef = useRef(false);
   const unavailableRef = useRef<Set<string>>(new Set());
   const intentionallyPlayingRef = useRef(false);
+  const startingPlaybackRef = useRef(false);
+  const pendingInteractionStartRef = useRef(false);
+  const userPausedRef = useRef(false);
+  const userMutedRef = useRef(false);
+  const autoplayCleanupRef = useRef<(() => void) | null>(null);
   const touchYRef = useRef<number | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -73,7 +91,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [durations, setDurations] = useState<Record<string, number>>({});
   const [unavailableIds, setUnavailableIds] = useState<string[]>([]);
-  const [volume, setVolume] = useState(getStoredVolume);
+  const [volume, setVolume] = useState(getStartupVolume);
   const [muted, setMuted] = useState(false);
   const [shuffleEnabled, setShuffleEnabled] = useState(getStoredShuffle);
   const [announcement, setAnnouncement] = useState('');
@@ -283,22 +301,36 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
     setAnnouncement(`${track.title} unavailable`);
   };
 
-  const playTrack = async (index = currentIndexRef.current, fromAutoAdvance = false) => {
+  const playTrack = async (index = currentIndexRef.current, fromAutoAdvance = false, options: PlayOptions = {}) => {
     const audio = audioRef.current;
     const track = playlistTracks[index];
-    if (!audio || !track) return;
+    if (!audio || !track) return false;
+
+    if (!options.userInitiated && !fromAutoAdvance && (userPausedRef.current || userMutedRef.current)) {
+      return false;
+    }
+
+    if (currentIndexRef.current === index && !audio.paused && !audio.ended) {
+      return true;
+    }
+
+    if (startingPlaybackRef.current && currentIndexRef.current === index) {
+      if (options.userInitiated) pendingInteractionStartRef.current = true;
+      return false;
+    }
 
     if (unavailableRef.current.has(track.id)) {
       markUnavailable(track);
-      return;
+      return false;
     }
 
     try {
+      startingPlaybackRef.current = true;
       setPlaybackState('loading');
       const graphReady = await ensureAudioGraph();
       if (!graphReady) {
         markUnavailable(track);
-        return;
+        return false;
       }
 
       if (currentIndexRef.current !== index || audio.src !== new URL(track.source, window.location.href).href) {
@@ -307,14 +339,27 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
 
       intentionallyPlayingRef.current = true;
       await audio.play();
+      autoplayCleanupRef.current?.();
+      autoplayCleanupRef.current = null;
       setAnnouncement(`${track.title} playing`);
-    } catch {
+      return true;
+    } catch (error) {
       intentionallyPlayingRef.current = false;
-      if (fromAutoAdvance) {
+      setPlaybackState('paused');
+      if ((options.allowAutoplayBlock || options.userInitiated) && isAutoplayBlockedError(error)) {
+        setAnnouncement(`${track.title} ready`);
+      } else if (fromAutoAdvance) {
         const nextIndex = getNextIndex(1, shuffleRef.current);
         if (nextIndex !== index) void playTrack(nextIndex, true);
       } else {
         markUnavailable(track);
+      }
+      return false;
+    } finally {
+      startingPlaybackRef.current = false;
+      if (pendingInteractionStartRef.current && !userPausedRef.current && !userMutedRef.current) {
+        pendingInteractionStartRef.current = false;
+        void playTrack(currentIndexRef.current, false, { userInitiated: true });
       }
     }
   };
@@ -327,6 +372,9 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
 
   const pauseTrack = () => {
     intentionallyPlayingRef.current = false;
+    userPausedRef.current = true;
+    autoplayCleanupRef.current?.();
+    autoplayCleanupRef.current = null;
     audioRef.current?.pause();
     setPlaybackState('paused');
     setAnnouncement(`${currentTrack.title} paused`);
@@ -335,7 +383,10 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   const selectTrack = (index: number) => {
     const shouldContinue = playbackState === 'playing' || playbackState === 'loading';
     loadTrack(playlistTracks[index], index);
-    if (shouldContinue) void playTrack(index);
+    if (shouldContinue) {
+      userPausedRef.current = false;
+      void playTrack(index, false, { userInitiated: true });
+    }
   };
 
   const handlePrevious = () => {
@@ -360,8 +411,55 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
     const audio = new Audio();
     audio.preload = 'metadata';
     audio.src = playlistTracks[0].source;
-    audio.volume = getStoredVolume();
+    audio.volume = startupVolume;
     audioRef.current = audio;
+    let startupTimer: number | null = null;
+
+    const removeAutoplayFallback = () => {
+      document.removeEventListener('pointerdown', handleAutoplayInteraction);
+      document.removeEventListener('touchstart', handleAutoplayInteraction);
+      document.removeEventListener('keydown', handleAutoplayInteraction);
+      if (autoplayCleanupRef.current === removeAutoplayFallback) autoplayCleanupRef.current = null;
+    };
+
+    const installAutoplayFallback = () => {
+      if (autoplayCleanupRef.current) return;
+      autoplayCleanupRef.current = removeAutoplayFallback;
+      document.addEventListener('pointerdown', handleAutoplayInteraction, { passive: true });
+      document.addEventListener('touchstart', handleAutoplayInteraction, { passive: true });
+      document.addEventListener('keydown', handleAutoplayInteraction, { passive: true });
+    };
+
+    function handleAutoplayInteraction(event: Event) {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('[data-audio-autoplay-opt-out]')) {
+        userMutedRef.current = true;
+        removeAutoplayFallback();
+        return;
+      }
+
+      if (userPausedRef.current || userMutedRef.current || (!audio.paused && !audio.ended)) {
+        removeAutoplayFallback();
+        return;
+      }
+
+      void playTrackRef.current(0, false, { userInitiated: true }).then((started) => {
+        if (started) removeAutoplayFallback();
+      });
+    }
+
+    const requestStartupPlayback = () => {
+      if (userPausedRef.current || userMutedRef.current || (!audio.paused && !audio.ended)) return;
+
+      installAutoplayFallback();
+      void playTrackRef.current(0, false, { allowAutoplayBlock: true }).then((started) => {
+        if (started) {
+          removeAutoplayFallback();
+        } else if (!userPausedRef.current && !userMutedRef.current) {
+          installAutoplayFallback();
+        }
+      });
+    };
 
     const handleLoadedMetadata = () => {
       setPlaybackState((state) => (state === 'loading' ? 'paused' : state));
@@ -412,8 +510,11 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
     audio.load();
+    startupTimer = window.setTimeout(requestStartupPlayback, 0);
 
     return () => {
+      if (startupTimer !== null) window.clearTimeout(startupTimer);
+      removeAutoplayFallback();
       audio.pause();
       audio.removeAttribute('src');
       audio.load();
@@ -430,34 +531,6 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
       audioContextRef.current = null;
       sourceNodeRef.current = null;
       analyserRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const metadataAudios = playlistTracks.map((track) => {
-      const audio = new Audio();
-      const updateDuration = () => {
-        if (Number.isFinite(audio.duration) && audio.duration > 0) {
-          setDurations((previous) => ({ ...previous, [track.id]: audio.duration }));
-        }
-      };
-
-      audio.preload = 'metadata';
-      audio.addEventListener('loadedmetadata', updateDuration);
-      audio.addEventListener('durationchange', updateDuration);
-      audio.src = track.source;
-      audio.load();
-
-      return { audio, updateDuration };
-    });
-
-    return () => {
-      metadataAudios.forEach(({ audio, updateDuration }) => {
-        audio.removeEventListener('loadedmetadata', updateDuration);
-        audio.removeEventListener('durationchange', updateDuration);
-        audio.removeAttribute('src');
-        audio.load();
-      });
     };
   }, []);
 
@@ -505,7 +578,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
           <div className="soundtrack-playlist" role="dialog" aria-label={`${playlistLabel} playlist`}>
             <div className="soundtrack-playlist-header">
               <p className="font-mono text-xs uppercase tracking-normal soft-dim">{playlistLabel}</p>
-              <button type="button" className="soundtrack-icon-button" aria-label="Close playlist" onClick={() => closePlaylist()}>
+              <button type="button" className="soundtrack-icon-button" aria-label="Close playlist" onClick={() => closePlaylist()} data-audio-autoplay-opt-out>
                 <X size={16} />
               </button>
             </div>
@@ -536,6 +609,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
                     aria-selected={selected}
                     onClick={() => selectTrack(index)}
                     disabled={trackUnavailable}
+                    data-audio-autoplay-opt-out
                   >
                     <span className="font-mono text-[0.68rem] soft-dim">{track.number}</span>
                     <span className="min-w-0 flex-1 text-left">
@@ -557,16 +631,23 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
             type="button"
             className="soundtrack-icon-button is-primary"
             aria-label={playbackState === 'playing' ? 'Pause soundtrack' : 'Play soundtrack'}
-            onClick={() => (playbackState === 'playing' ? pauseTrack() : void playTrack())}
+            onClick={() => {
+              if (playbackState === 'playing') {
+                pauseTrack();
+              } else {
+                userPausedRef.current = false;
+                void playTrack(undefined, false, { userInitiated: true });
+              }
+            }}
           >
             {playbackState === 'loading' ? <Loader2 className="animate-spin" size={17} /> : playbackState === 'playing' ? <Pause size={17} /> : <Play size={17} />}
           </button>
 
-          <button type="button" className="soundtrack-icon-button" aria-label="Previous track" onClick={handlePrevious}>
+          <button type="button" className="soundtrack-icon-button" aria-label="Previous track" onClick={handlePrevious} data-audio-autoplay-opt-out>
             <SkipBack size={16} />
           </button>
 
-          <button type="button" className="soundtrack-icon-button" aria-label="Next track" onClick={handleNext}>
+          <button type="button" className="soundtrack-icon-button" aria-label="Next track" onClick={handleNext} data-audio-autoplay-opt-out>
             <SkipForward size={16} />
           </button>
 
@@ -597,6 +678,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
             aria-label="Toggle shuffle"
             aria-pressed={shuffleEnabled}
             onClick={() => setShuffleEnabled((value) => !value)}
+            data-audio-autoplay-opt-out
           >
             <Shuffle size={16} />
           </button>
@@ -606,7 +688,25 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
             className="soundtrack-icon-button"
             aria-label={muted ? 'Unmute soundtrack' : 'Mute soundtrack'}
             aria-pressed={muted}
-            onClick={() => setMuted((value) => !value)}
+            onPointerDown={() => {
+              if (!muted) {
+                userMutedRef.current = true;
+                autoplayCleanupRef.current?.();
+                autoplayCleanupRef.current = null;
+              }
+            }}
+            onClick={() =>
+              setMuted((value) => {
+                const nextMuted = !value;
+                if (nextMuted) {
+                  userMutedRef.current = true;
+                  autoplayCleanupRef.current?.();
+                  autoplayCleanupRef.current = null;
+                }
+                return nextMuted;
+              })
+            }
+            data-audio-autoplay-opt-out
           >
             {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
@@ -619,8 +719,10 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
             max="1"
             step="0.01"
             value={muted ? 0 : volume}
+            data-audio-autoplay-opt-out
             onChange={(event) => {
               setMuted(false);
+              userMutedRef.current = false;
               setVolume(Number(event.target.value));
             }}
           />
@@ -632,6 +734,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
             aria-label={playlistOpen ? 'Close playlist' : 'Open playlist'}
             aria-expanded={playlistOpen}
             onClick={() => (playlistOpen ? closePlaylist() : setPlaylistOpen(true))}
+            data-audio-autoplay-opt-out
           >
             <ListMusic size={16} />
           </button>

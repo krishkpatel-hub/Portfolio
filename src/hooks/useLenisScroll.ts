@@ -56,9 +56,10 @@ export function useLenisScroll(reducedMotion: boolean) {
     }
 
     const lenis = new Lenis({
-      lerp: 0.075,
+      lerp: 0.08,
       smoothWheel: true,
       syncTouch: false,
+      touchMultiplier: 1,
       infinite: false,
       orientation: 'vertical',
       gestureOrientation: 'vertical',
