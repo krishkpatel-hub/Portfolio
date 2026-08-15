@@ -13,7 +13,7 @@ export const portfolioData: PortfolioData = {
     canonicalUrl: 'https://portfolio-krish-patel1.vercel.app/',
     socials: [
       { label: 'GitHub', href: 'https://github.com/krishkpatel-hub', type: 'github' },
-      { label: 'LinkedIn', href: 'https://linkedin.com/in/krish-patel', type: 'linkedin' },
+      { label: 'LinkedIn', href: 'https://www.linkedin.com/in/krish-patel-814534285/', type: 'linkedin' },
       { label: 'Email', href: 'mailto:krishkpatel1978@gmail.com', type: 'email' },
     ],
   },
