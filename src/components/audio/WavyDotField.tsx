@@ -11,7 +11,32 @@ interface PointBuffers {
   y: Float32Array;
   depth: Float32Array;
   mask: Float32Array;
+  row: Float32Array;
   count: number;
+  spacing: number;
+  wrapWidth: number;
+}
+
+interface MeshEnergy {
+  bass: number;
+  mid: number;
+  high: number;
+  bassAverage: number;
+  motion: number;
+  cooldown: number;
+}
+
+interface MeshPhase {
+  x: number;
+  lastTime: number;
+}
+
+interface PulseBuffers {
+  x: Float32Array;
+  age: Float32Array;
+  amplitude: Float32Array;
+  active: Uint8Array;
+  writeIndex: number;
 }
 
 const emptyPoints: PointBuffers = {
@@ -19,11 +44,37 @@ const emptyPoints: PointBuffers = {
   y: new Float32Array(0),
   depth: new Float32Array(0),
   mask: new Float32Array(0),
+  row: new Float32Array(0),
   count: 0,
+  spacing: 22,
+  wrapWidth: 1,
 };
 
 const maxDevicePixelRatio = 1.5;
 const targetFrameInterval = 1000 / 48;
+const pulseCount = 8;
+
+const meshTuning = {
+  desktopSpacing: 15,
+  tabletSpacing: 18,
+  mobileSpacing: 24,
+  idleSpeed: 6,
+  playSpeed: 34,
+  idleWaveHeight: 3.5,
+  playWaveHeight: 13,
+  bassWaveHeight: 26,
+  bassLateralShift: 16,
+  midRippleHeight: 8,
+  highBrightness: 0.055,
+  pulseSpeed: 520,
+  pulseWidth: 210,
+  pulseHeight: 32,
+  pulseLateralShift: 20,
+  pulseDamping: 0.76,
+  bassPeakThreshold: 0.105,
+  bassPeakFloor: 0.18,
+  bassPeakCooldown: 0.28,
+};
 
 function averageBand(data: ArrayLike<number>, startRatio: number, endRatio: number) {
   const start = Math.floor(data.length * startRatio);
@@ -37,8 +88,20 @@ function averageBand(data: ArrayLike<number>, startRatio: number, endRatio: numb
   return total / (end - start) / 255;
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function clamp01(value: number) {
-  return Math.min(1, Math.max(0, value));
+  return clamp(value, 0, 1);
+}
+
+function wrap(value: number, length: number) {
+  return ((value % length) + length) % length;
+}
+
+function smoothEnvelope(current: number, target: number, attack: number, release: number) {
+  return current + (target - current) * (target > current ? attack : release);
 }
 
 export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotFieldProps) {
@@ -51,9 +114,15 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
   const isPlayingRef = useRef(isPlaying);
   const reducedMotionRef = useRef(reducedMotion);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
-  const energyRef = useRef({ bass: 0, mid: 0, high: 0, overall: 0 });
-  const pointerRef = useRef({ active: false, x: 0.5, y: 0.72, sx: 0.5, sy: 0.72 });
-  const finePointerRef = useRef(false);
+  const energyRef = useRef<MeshEnergy>({ bass: 0, mid: 0, high: 0, bassAverage: 0, motion: 0, cooldown: 0 });
+  const phaseRef = useRef<MeshPhase>({ x: 0, lastTime: 0 });
+  const pulsesRef = useRef<PulseBuffers>({
+    x: new Float32Array(pulseCount),
+    age: new Float32Array(pulseCount),
+    amplitude: new Float32Array(pulseCount),
+    active: new Uint8Array(pulseCount),
+    writeIndex: 0,
+  });
   const sizeRef = useRef({ width: 0, height: 0, dpr: 1, mobile: false, tablet: false });
   const lastFrameTimeRef = useRef(0);
 
@@ -83,14 +152,24 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       const height = Math.max(1, Math.floor(rect.height));
       const mobile = width < 640;
       const tablet = width >= 640 && width < 1024;
-      const spacing = mobile ? 30 : tablet ? 24 : 20;
-      const columns = Math.ceil(width / spacing) + 2;
-      const rows = Math.ceil(height / spacing) + 2;
+      const spacing = reducedMotionRef.current
+        ? mobile
+          ? meshTuning.mobileSpacing + 10
+          : meshTuning.tabletSpacing + 8
+        : mobile
+          ? meshTuning.mobileSpacing
+          : tablet
+            ? meshTuning.tabletSpacing
+            : meshTuning.desktopSpacing;
+      const columns = Math.ceil(width / spacing) + 8;
+      const rows = Math.ceil(height / spacing) + 5;
       const count = columns * rows;
       const x = new Float32Array(count);
       const y = new Float32Array(count);
       const depth = new Float32Array(count);
       const mask = new Float32Array(count);
+      const row = new Float32Array(count);
+      const wrapWidth = columns * spacing;
       let pointIndex = 0;
 
       canvas.width = Math.floor(width * dpr);
@@ -98,129 +177,187 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       sizeRef.current = { width, height, dpr, mobile, tablet };
 
-      for (let row = 0; row < rows; row += 1) {
+      for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
         for (let column = 0; column < columns; column += 1) {
-          const px = column * spacing - spacing * 0.5;
-          const py = row * spacing - spacing * 0.5;
-          const nx = px / width;
-          const ny = py / height;
-          const centerDepth = 1 - Math.hypot((nx - 0.5) * 1.35, (ny - 0.67) * 1.15);
-          const sideFade = Math.min(nx / 0.16, (1 - nx) / 0.16, 1);
-          const topFade = clamp01((ny - 0.1) / 0.34);
-          const bottomFade = clamp01((1 - ny) / 0.12);
-          const textFade = 1 - clamp01((0.5 - ny) / 0.36) * 0.58;
-          const lowerBias = clamp01((ny - 0.18) / 0.62);
+          const baseX = column * spacing;
+          const baseY = rowIndex * spacing - spacing;
+          const nx = baseX / width;
+          const ny = baseY / height;
+          const horizon = clamp01((ny - 0.02) / 0.95);
+          const centerDepth = 1 - Math.hypot((nx - 0.5) * 0.84, (ny - 0.62) * 1.12);
+          const sideFade = Math.min(nx / 0.12, (1 - nx) / 0.12, 1);
+          const topFade = clamp01((ny - 0.06) / 0.28);
+          const bottomFade = clamp01((1 - ny) / 0.14);
+          const textFade = 1 - clamp01((0.55 - ny) / 0.42) * 0.68;
+          const controlFade = 1 - clamp01((ny - 0.74) / 0.26) * 0.28;
 
-          x[pointIndex] = px;
-          y[pointIndex] = py;
-          depth[pointIndex] = Math.max(0.08, centerDepth);
-          mask[pointIndex] = Math.max(0, sideFade * topFade * bottomFade * textFade * (0.28 + lowerBias * 0.72));
+          x[pointIndex] = baseX;
+          y[pointIndex] = baseY;
+          row[pointIndex] = rowIndex;
+          depth[pointIndex] = clamp(0.22 + horizon * 0.78 + centerDepth * 0.24, 0.16, 1.22);
+          mask[pointIndex] = Math.max(0, sideFade * topFade * bottomFade * textFade * controlFade);
           pointIndex += 1;
         }
       }
 
-      pointsRef.current = { x, y, depth, mask, count };
+      pointsRef.current = { x, y, depth, mask, row, count, spacing, wrapWidth };
+      phaseRef.current.x = wrap(phaseRef.current.x, wrapWidth);
+    };
+
+    const triggerPulse = (bass: number) => {
+      const pulses = pulsesRef.current;
+      const index = pulses.writeIndex;
+      const { width } = sizeRef.current;
+
+      pulses.x[index] = -width * 0.22;
+      pulses.age[index] = 0;
+      pulses.amplitude[index] = clamp((bass - energyRef.current.bassAverage) * 2.6, 0.18, 0.95);
+      pulses.active[index] = 1;
+      pulses.writeIndex = (index + 1) % pulseCount;
+    };
+
+    const updateAudio = (deltaSeconds: number) => {
+      const reduced = reducedMotionRef.current;
+      const playing = isPlayingRef.current;
+      const analyser = analyserNodeRef.current;
+
+      let bassTarget = 0;
+      let midTarget = 0;
+      let highTarget = 0;
+
+      if (analyser && playing && !reduced) {
+        if (!frequencyDataRef.current || frequencyDataRef.current.length !== analyser.frequencyBinCount) {
+          frequencyDataRef.current = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
+        }
+
+        analyser.getByteFrequencyData(frequencyDataRef.current);
+        bassTarget = averageBand(frequencyDataRef.current, 0.015, 0.12);
+        midTarget = averageBand(frequencyDataRef.current, 0.14, 0.46);
+        highTarget = averageBand(frequencyDataRef.current, 0.54, 0.88);
+      }
+
+      const energy = energyRef.current;
+      energy.bass = smoothEnvelope(energy.bass, bassTarget, 0.36, 0.075);
+      energy.mid = smoothEnvelope(energy.mid, midTarget, 0.22, 0.055);
+      energy.high = smoothEnvelope(energy.high, highTarget, 0.18, 0.045);
+      energy.motion = smoothEnvelope(energy.motion, playing && !reduced ? 1 : 0, 0.045, 0.035);
+      energy.bassAverage += (bassTarget - energy.bassAverage) * 0.018;
+      energy.cooldown = Math.max(0, energy.cooldown - deltaSeconds);
+
+      const threshold = Math.max(meshTuning.bassPeakFloor, energy.bassAverage + meshTuning.bassPeakThreshold);
+      if (playing && !reduced && energy.cooldown <= 0 && bassTarget > threshold && energy.bass > energy.bassAverage + 0.08) {
+        triggerPulse(energy.bass);
+        energy.cooldown = meshTuning.bassPeakCooldown;
+      }
+    };
+
+    const updatePulses = (deltaSeconds: number) => {
+      const pulses = pulsesRef.current;
+      const { width } = sizeRef.current;
+
+      for (let index = 0; index < pulseCount; index += 1) {
+        if (!pulses.active[index]) continue;
+        pulses.age[index] += deltaSeconds;
+        pulses.x[index] += meshTuning.pulseSpeed * deltaSeconds;
+        pulses.amplitude[index] *= Math.pow(meshTuning.pulseDamping, deltaSeconds * 8);
+
+        if (pulses.x[index] > width * 1.28 || pulses.amplitude[index] < 0.018) {
+          pulses.active[index] = 0;
+          pulses.amplitude[index] = 0;
+        }
+      }
     };
 
     const draw = (time = 0) => {
       const { width, height, mobile, tablet } = sizeRef.current;
       if (!width || !height) return;
 
-      context.clearRect(0, 0, width, height);
-
       const points = pointsRef.current;
       const reduced = reducedMotionRef.current;
-      const playing = isPlayingRef.current;
-      const seconds = time * 0.001;
-      const analyser = analyserNodeRef.current;
-
-      if (analyser && (!frequencyDataRef.current || frequencyDataRef.current.length !== analyser.frequencyBinCount)) {
-        frequencyDataRef.current = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
-      }
-
-      let bassTarget = 0;
-      let midTarget = 0;
-      let highTarget = 0;
-
-      if (analyser && frequencyDataRef.current && playing && !reduced) {
-        analyser.getByteFrequencyData(frequencyDataRef.current);
-        bassTarget = averageBand(frequencyDataRef.current, 0.01, 0.13);
-        midTarget = averageBand(frequencyDataRef.current, 0.13, 0.46);
-        highTarget = averageBand(frequencyDataRef.current, 0.46, 0.88);
-      }
-
       const energy = energyRef.current;
-      const easing = playing ? 0.085 : 0.035;
-      energy.bass += (bassTarget - energy.bass) * easing;
-      energy.mid += (midTarget - energy.mid) * easing;
-      energy.high += (highTarget - energy.high) * easing;
-      const overallTarget = Math.min(0.82, bassTarget * 0.45 + midTarget * 0.36 + highTarget * 0.18);
-      energy.overall += (overallTarget - energy.overall) * easing;
+      const phase = phaseRef.current;
+      const seconds = time * 0.001;
+      const deltaSeconds = phase.lastTime ? clamp(seconds - phase.lastTime, 0.001, 0.05) : 1 / 48;
+      phase.lastTime = seconds;
 
-      const pointer = pointerRef.current;
-      pointer.sx += (pointer.x - pointer.sx) * 0.06;
-      pointer.sy += (pointer.y - pointer.sy) * 0.06;
+      updateAudio(deltaSeconds);
+      updatePulses(deltaSeconds);
 
-      const audioLift = Math.min(1, energy.overall * 1.35);
-      const densityFactor = mobile ? 0.64 : tablet ? 0.82 : 1;
-      const amplitude = reduced ? 0 : (mobile ? 5.2 : tablet ? 7.5 : 10.5) + audioLift * (mobile ? 8 : 18);
-      const focalAX = width * (0.48 + Math.sin(seconds * 0.075) * 0.18);
-      const focalAY = height * (0.68 + Math.cos(seconds * 0.055) * 0.1);
-      const focalBX = width * (0.62 + Math.cos(seconds * 0.052) * 0.22);
-      const focalBY = height * (0.78 + Math.sin(seconds * 0.067) * 0.08);
-      const pointerX = pointer.sx * width;
-      const pointerY = pointer.sy * height;
-      const pointerEnabled = pointer.active && !reduced && finePointerRef.current;
+      const speed = reduced
+        ? meshTuning.idleSpeed * 0.18
+        : meshTuning.idleSpeed + (meshTuning.playSpeed - meshTuning.idleSpeed) * energy.motion;
+      phase.x = wrap(phase.x + speed * deltaSeconds, points.wrapWidth);
 
+      context.clearRect(0, 0, width, height);
       context.globalCompositeOperation = 'source-over';
+
+      const motion = reduced ? 0 : energy.motion;
+      const bass = reduced ? 0 : energy.bass;
+      const mid = reduced ? 0 : energy.mid;
+      const high = reduced ? 0 : energy.high;
+      const densityScale = mobile ? 0.74 : tablet ? 0.88 : 1;
+      const waveHeight = meshTuning.idleWaveHeight + meshTuning.playWaveHeight * motion + meshTuning.bassWaveHeight * bass;
+      const lateralShift = reduced ? 0 : meshTuning.bassLateralShift * bass + 3 * motion;
+      const perspectiveCenterX = width * 0.52;
 
       for (let index = 0; index < points.count; index += 1) {
         const baseX = points.x[index];
         const baseY = points.y[index];
-        const nx = baseX / width;
+        const renderX = wrap(baseX + phase.x, points.wrapWidth) - points.spacing * 4;
+        if (renderX < -points.spacing * 2 || renderX > width + points.spacing * 2) continue;
+
         const ny = baseY / height;
-        const visibility = points.mask[index] * Math.max(0.08, points.depth[index]);
-        if (visibility <= 0.015) continue;
+        const depth = points.depth[index];
+        const visibility = points.mask[index] * clamp(depth, 0.12, 1);
+        if (visibility <= 0.012) continue;
 
-        const distanceA = Math.hypot(baseX - focalAX, baseY - focalAY);
-        const distanceB = Math.hypot(baseX - focalBX, baseY - focalBY);
-        const lowerWeight = clamp01((ny - 0.18) / 0.72);
-        const centerWeight = 1 - clamp01(Math.abs(nx - 0.5) / 0.5);
-        const bassWeight = lowerWeight * (0.38 + centerWeight * 0.62);
+        const perspective = 0.58 + depth * 0.52;
+        const projectedX = perspectiveCenterX + (renderX - perspectiveCenterX) * perspective;
+        const projectedY = baseY * (0.72 + depth * 0.28) + height * (1 - depth) * 0.08;
+        const meshX = baseX + phase.x;
+        const meshY = baseY;
+        const broadWaveA = Math.sin(meshX * 0.010 + meshY * 0.006 + seconds * (0.55 + motion * 0.42));
+        const broadWaveB = Math.sin(meshX * -0.0065 + meshY * 0.012 - seconds * (0.38 + motion * 0.28));
+        const broadWaveC = Math.cos((meshX + meshY * 1.45) * 0.0048 + seconds * (0.24 + motion * 0.2));
+        const midRipple = Math.sin(meshX * 0.026 + meshY * 0.018 + seconds * 1.16) * mid * meshTuning.midRippleHeight;
 
-        const ambientWave =
-          Math.sin(baseX * 0.009 + seconds * 0.34) * 0.46 +
-          Math.cos(baseY * 0.012 - seconds * 0.27) * 0.38 +
-          Math.sin((baseX + baseY) * 0.006 + seconds * 0.18) * 0.28;
-        const bassWave =
-          Math.sin(distanceA * 0.013 - seconds * (0.72 + energy.bass * 1.7)) *
-          (0.8 + energy.bass * 2.85) *
-          bassWeight;
-        const midWave =
-          Math.sin(baseY * 0.023 + baseX * 0.006 + seconds * (0.9 + energy.mid * 1.2)) *
-          energy.mid *
-          1.35;
-        const diagonalWave =
-          Math.cos((baseX - baseY) * 0.012 - seconds * 0.58) *
-          (0.25 + energy.mid * 0.85);
-        const radialDetail = Math.sin(distanceB * 0.024 + seconds * 0.42) * (0.2 + energy.bass * 0.55);
-        const highShimmer = Math.sin((baseX + baseY) * 0.062 + seconds * 3.2) * energy.high * 0.42;
-        const pointerDistance = pointerEnabled ? Math.hypot(baseX - pointerX, baseY - pointerY) : 9999;
-        const pointerWave = pointerEnabled ? Math.max(0, 1 - pointerDistance / 180) * Math.sin(pointerDistance * 0.035 - seconds * 1.7) * 0.55 : 0;
-        const wave = ambientWave + bassWave + midWave + diagonalWave + radialDetail + highShimmer + pointerWave;
+        let pulseWave = 0;
+        let pulseShift = 0;
+        const pulses = pulsesRef.current;
+        for (let pulseIndex = 0; pulseIndex < pulseCount; pulseIndex += 1) {
+          if (!pulses.active[pulseIndex]) continue;
+          const distance = projectedX - pulses.x[pulseIndex];
+          const envelope = Math.exp(-(distance * distance) / (meshTuning.pulseWidth * meshTuning.pulseWidth));
+          const wave = Math.sin(distance * 0.035 - pulses.age[pulseIndex] * 3.6) * envelope * pulses.amplitude[pulseIndex];
+          pulseWave += wave;
+          pulseShift += Math.cos(distance * 0.018) * envelope * pulses.amplitude[pulseIndex];
+        }
 
-        const displacement = wave * amplitude * visibility;
-        const xDrift = reduced ? 0 : (Math.cos(baseY * 0.016 + seconds * 0.32) * (1.2 + energy.mid * 4) + pointerWave * 4) * visibility;
-        const crest = clamp01((wave + 2.4) / 4.8);
-        const radius = (0.42 + visibility * 0.72 + crest * 0.34 + energy.bass * bassWeight * 0.72 + energy.high * 0.12) * densityFactor;
+        const terrain = broadWaveA * 0.54 + broadWaveB * 0.34 + broadWaveC * 0.28;
+        const lowerWeight = clamp01((ny - 0.1) / 0.82);
+        const edgeReadability = 1 - clamp01((0.54 - ny) / 0.38) * 0.62;
+        const yDisplacement =
+          terrain * waveHeight * visibility * (0.42 + lowerWeight * 0.74) +
+          midRipple * visibility +
+          pulseWave * meshTuning.pulseHeight * visibility;
+        const xDisplacement =
+          (terrain * lateralShift + pulseShift * meshTuning.pulseLateralShift) * visibility +
+          Math.sin(points.row[index] * 0.42 + seconds * 0.24) * 1.8 * motion * visibility;
+        const crest = clamp01((terrain + 1.5) / 3 + pulseWave * 0.24 + bass * 0.16);
+        const radius = Math.max(
+          0.32,
+          (0.34 + depth * 0.42 + crest * 0.34 + bass * 0.42 + Math.abs(pulseWave) * 0.52) * densityScale,
+        );
         const alpha = Math.min(
-          0.5,
-          (0.045 + visibility * 0.2 + crest * 0.055 + energy.mid * 0.06 + energy.high * 0.025) * (mobile ? 0.72 : 1),
+          0.54,
+          (0.05 + visibility * 0.2 + crest * 0.07 + bass * 0.08 + mid * 0.035 + high * meshTuning.highBrightness) *
+            edgeReadability *
+            (mobile ? 0.78 : 1),
         );
 
         context.beginPath();
         context.fillStyle = `rgba(231, 229, 228, ${alpha})`;
-        context.arc(baseX + xDrift, baseY + displacement, Math.max(0.28, radius), 0, Math.PI * 2);
+        context.arc(projectedX + xDisplacement, projectedY + yDisplacement, radius, 0, Math.PI * 2);
         context.fill();
       }
     };
@@ -267,35 +404,13 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       }
     };
 
-    const finePointerQuery = window.matchMedia('(pointer: fine)');
-    finePointerRef.current = finePointerQuery.matches;
-    const handlePointerCapabilityChange = (event: MediaQueryListEvent) => {
-      finePointerRef.current = event.matches;
-      if (!event.matches) pointerRef.current.active = false;
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (!finePointerRef.current) return;
-      const rect = canvas.getBoundingClientRect();
-      pointerRef.current.active = true;
-      pointerRef.current.x = clamp01((event.clientX - rect.left) / rect.width);
-      pointerRef.current.y = clamp01((event.clientY - rect.top) / rect.height);
-    };
-
-    const handlePointerLeave = () => {
-      pointerRef.current.active = false;
-      pointerRef.current.x = 0.5;
-      pointerRef.current.y = 0.72;
-    };
-
-    finePointerQuery.addEventListener('change', handlePointerCapabilityChange);
-
     buildField();
     draw(0);
 
     const resizeObserver = new ResizeObserver(() => {
       buildField();
       draw(0);
+      start();
     });
     resizeObserver.observe(canvas);
 
@@ -309,8 +424,6 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
     );
     intersectionObserver.observe(canvas);
 
-    canvas.parentElement?.addEventListener('pointermove', handlePointerMove);
-    canvas.parentElement?.addEventListener('pointerleave', handlePointerLeave);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     if (!reducedMotionRef.current) start();
@@ -319,9 +432,6 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       stop();
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
-      finePointerQuery.removeEventListener('change', handlePointerCapabilityChange);
-      canvas.parentElement?.removeEventListener('pointermove', handlePointerMove);
-      canvas.parentElement?.removeEventListener('pointerleave', handlePointerLeave);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [analyserRef]);
