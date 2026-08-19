@@ -9,7 +9,7 @@ export const portfolioData: PortfolioData = {
     email: 'krishkpatel1978@gmail.com',
     location: 'Edison, New Jersey',
     focus: 'Software engineering, full-stack development, data systems, automation, and practical operational products',
-    availability: 'Open to software engineering opportunities',
+    availability: 'Building in public. Open to opportunities.',
     canonicalUrl: 'https://portfolio-krish-patel1.vercel.app/',
     socials: [
       { label: 'GitHub', href: 'https://github.com/krishkpatel-hub', type: 'github' },
