@@ -245,6 +245,26 @@ export const portfolioData: PortfolioData = {
       status: 'Live',
     },
     {
+      title: 'GroundStack',
+      category: 'AI Knowledge Support Platform',
+      description:
+        'A full-stack AI support platform that answers technical questions from an approved knowledge base using hybrid retrieval, LLaMA-compatible generation, and citation validation. Includes controlled ingestion, evaluation tooling, Discord integration, and production-oriented security and reliability safeguards.',
+      achievements: [
+        'Built a hybrid RAG pipeline combining pgvector semantic search, PostgreSQL full-text search, reciprocal-rank fusion, reranking, and source-diversity selection.',
+        'Implemented grounded answer streaming with structured citations, fabricated-citation rejection, and deterministic insufficient-evidence responses.',
+        'Developed a Next.js admin interface and FastAPI backend for document ingestion, source management, feedback, evaluation, and Discord operations.',
+        'Added authentication boundaries, protected admin routes, rate limiting, circuit breakers, prompt-injection defenses, secret scanning, and backup/restore verification.',
+        'Created deterministic evaluation, load testing, QLoRA preparation, Docker deployment assets, database migrations, and GitHub Actions CI.',
+      ],
+      technologies: ['Next.js', 'TypeScript', 'FastAPI', 'Python', 'LLaMA', 'RAG', 'PostgreSQL', 'pgvector', 'Redis', 'Docker', 'GitHub Actions'],
+      sourceUrl: 'https://github.com/krishkpatel-hub/GroundStack',
+      sourceLabel: 'GitHub',
+      caseStudyUrl: 'https://github.com/krishkpatel-hub/GroundStack/blob/main/docs/CASE_STUDY.md',
+      status: 'Release Candidate',
+      image: '/projects/groundstack-landing.png',
+      imageAlt: 'GroundStack AI knowledge support platform interface',
+    },
+    {
       title: 'TripMate Notifier',
       category: 'Transit Notification Application',
       description:

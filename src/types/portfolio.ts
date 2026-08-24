@@ -87,9 +87,12 @@ export interface Project {
   achievements: string[];
   technologies: string[];
   sourceUrl?: string;
+  sourceLabel?: string;
+  caseStudyUrl?: string;
   demoUrl?: string;
   status?: string;
   image?: string;
+  imageAlt?: string;
 }
 
 export interface Post {
