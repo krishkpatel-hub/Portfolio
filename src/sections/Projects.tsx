@@ -89,32 +89,18 @@ export function Projects({ projects, reducedMotion }: ProjectsProps) {
 
               <div className="mb-7 grid min-h-48 place-items-center overflow-hidden rounded-md border border-white/10 bg-black">
                 <div className="relative h-full min-h-48 w-full">
-                  {project.image ? (
-                    <>
-                      <img
-                        src={project.image}
-                        alt={project.imageAlt ?? `${project.title} project preview`}
-                        className="h-full min-h-48 w-full object-cover object-top opacity-80 grayscale transition duration-300 group-hover:opacity-95 group-hover:grayscale-0"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/45" aria-hidden="true" />
-                    </>
-                  ) : (
-                    <>
-                      <div className="technical-grid absolute inset-0 opacity-70" aria-hidden="true" />
-                      <div className="absolute inset-x-8 top-1/2 h-px bg-white/30" aria-hidden="true" />
-                      <div className="absolute left-8 top-8 font-mono text-xs uppercase tracking-normal text-zinc-500">
-                        {project.title}
-                      </div>
-                    </>
-                  )}
+                  <div className="technical-grid absolute inset-0 opacity-70" aria-hidden="true" />
+                  <div className="absolute inset-x-8 top-1/2 h-px bg-white/30" aria-hidden="true" />
+                  <div className="absolute left-8 top-8 font-mono text-xs uppercase tracking-normal text-zinc-500">
+                    {project.title}
+                  </div>
                 </div>
               </div>
 
               <h3 className="text-3xl font-semibold text-white md:text-5xl">{project.title}</h3>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">{project.description}</p>
 
-              <ul className="mt-6 grid gap-3 text-sm text-zinc-400 md:grid-cols-2">
+              <ul className="mt-6 grid gap-3 text-sm text-zinc-400 md:grid-cols-3">
                 {project.achievements.map((achievement) => (
                   <li key={achievement} className="border-l border-white/15 pl-3 leading-6">{achievement}</li>
                 ))}

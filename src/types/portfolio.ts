@@ -91,8 +91,6 @@ export interface Project {
   caseStudyUrl?: string;
   demoUrl?: string;
   status?: string;
-  image?: string;
-  imageAlt?: string;
 }
 
 export interface Post {

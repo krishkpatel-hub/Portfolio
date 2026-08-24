@@ -261,8 +261,6 @@ export const portfolioData: PortfolioData = {
       sourceLabel: 'GitHub',
       caseStudyUrl: 'https://github.com/krishkpatel-hub/GroundStack/blob/main/docs/CASE_STUDY.md',
       status: 'Release Candidate',
-      image: '/projects/groundstack-landing.png',
-      imageAlt: 'GroundStack AI knowledge support platform interface',
     },
     {
       title: 'TripMate Notifier',
