@@ -32,9 +32,9 @@ function App() {
       <main>
         <Hero personal={portfolioData.personal} />
         <About about={portfolioData.about} education={portfolioData.education} personal={portfolioData.personal} />
+        <Experience experience={portfolioData.experience} />
         <Skills skills={portfolioData.skills} />
         <Certifications certifications={portfolioData.certifications} />
-        <Experience experience={portfolioData.experience} />
         <Leadership leadership={portfolioData.leadership} />
         <Projects projects={portfolioData.projects} reducedMotion={reducedMotion} />
         <Posts posts={portfolioData.posts} />
