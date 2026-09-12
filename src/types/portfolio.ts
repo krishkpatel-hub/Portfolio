@@ -61,7 +61,7 @@ export interface ExperienceEntry {
   role: string;
   dates: string;
   location: string;
-  description: string;
+  description?: string;
   achievements: string[];
   technologies: string[];
   link?: string;

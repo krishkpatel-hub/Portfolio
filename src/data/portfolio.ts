@@ -165,7 +165,7 @@ export const portfolioData: PortfolioData = {
     {
       company: 'Priorware Solutions',
       role: 'Software Engineering Intern',
-      dates: 'September 2025-June 2026',
+      dates: 'September 2025 – June 2026',
       location: 'Edison, New Jersey',
       description:
         'Built production software across warehouse management, food-service management, reporting, and deployment support workflows.',
@@ -179,6 +179,19 @@ export const portfolioData: PortfolioData = {
       ],
       technologies: ['React', 'Node.js', 'Express.js', 'MongoDB', 'SQL', 'ETL', 'REST APIs'],
       metrics: ['25% fewer support requests', '35% faster content updates', '40% less manual review'],
+    },
+    {
+      company: 'Realtime FinanceFix',
+      role: 'Software Engineering Intern',
+      dates: 'May 2025 – August 2025',
+      location: 'South Plainfield, NJ',
+      achievements: [
+        'Owned the end-to-end design, development, and deployment of a client-facing accounting and advisory web platform, building responsive service-discovery, consultation-intake, location, and client-portal interfaces.',
+        'Integrated an LLM-powered chatbot and multi-step agentic workflows to classify intent, answer service questions, validate outputs, and route inquiries across tax, accounting, and advisory services, reducing manual routing time by approximately 20%.',
+        'Built an LLM case-summary generation pipeline that retrieved and synthesized information across multiple repositories into structured summaries with source traceability, reducing summary-preparation time by approximately 15%.',
+        'Implemented privacy and reliability controls including explicit consent, sensitive-data warnings, input validation, and protected client workflows; tested, debugged, and improved features through production releases.',
+      ],
+      technologies: [],
     },
   ],
   leadership: [

@@ -31,7 +31,7 @@ export function Experience({ experience }: ExperienceProps) {
                   <p className="mt-2 text-zinc-400">
                     {entry.link ? <ExternalLink href={entry.link} className="underline decoration-white/30 underline-offset-4">{entry.company}</ExternalLink> : entry.company}
                   </p>
-                  <p className="mt-5 leading-7 text-zinc-300">{entry.description}</p>
+                  {entry.description ? <p className="mt-5 leading-7 text-zinc-300">{entry.description}</p> : null}
 
                   <ul className="mt-5 space-y-3 text-sm leading-6 text-zinc-300">
                     {entry.achievements.slice(0, 3).map((achievement) => (
