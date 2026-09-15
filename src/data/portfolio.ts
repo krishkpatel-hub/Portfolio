@@ -186,10 +186,10 @@ export const portfolioData: PortfolioData = {
       description:
         'Built an accounting and advisory web platform with LLM-powered inquiry routing, traceable case summaries, and protected client workflows.',
       achievements: [
-        'Owned design, development, and deployment of an accounting and advisory web platform, building responsive service-discovery, consultation-intake, location, and client-portal interfaces.',
-        'Integrated an LLM chatbot and multi-step agentic workflows for intent classification, service questions, output validation, and inquiry routing, reducing manual routing time by approximately 20%.',
-        'Built an LLM case-summary pipeline that retrieved and synthesized cross-repository information into structured summaries with source traceability, reducing preparation time by approximately 15%.',
-        'Implemented consent, sensitive-data warnings, and input validation for protected client workflows; tested and debugged production releases to improve application privacy and reliability.',
+        'Engineered RFF Books using React, Vite, Node.js, and PostgreSQL, enforcing RLS-based tenant isolation, exact accounting, migrations, and audit provenance.',
+        'Containerized the platform and Python document-parser worker with Docker; deployed services on AWS using GitHub Actions CI/CD and a provider-neutral AI layer, reducing document-processing time by 15%.',
+        'Built the Astro/TypeScript RFF site and knowledge-grounded AskRFF chatbot, using server-side OpenAI calls, curated answers, and deterministic routing to reduce manual inquiry-routing time by 20%.',
+        'Built a password-protected lead-outreach CRM with Vercel APIs and Google Sheets; automated status-aware Gmail follow-ups through Apps Script.',
       ],
       technologies: ['LLM INTEGRATION', 'AGENTIC WORKFLOWS', 'INTENT CLASSIFICATION', 'INPUT VALIDATION', 'SOURCE TRACEABILITY'],
       metrics: ['≈20% LESS MANUAL ROUTING TIME', '≈15% LESS SUMMARY PREPARATION TIME'],
