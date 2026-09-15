@@ -12,10 +12,12 @@ const navEaseOut = (time: number) => 1 - (1 - time) ** 3;
 
 let activeLenis: Lenis | null = null;
 let reducedMotionActive = false;
+let startScrollDriver: (() => void) | null = null;
 
-export function setScrollController(lenis: Lenis | null, reducedMotion: boolean) {
+export function setScrollController(lenis: Lenis | null, reducedMotion: boolean, startDriver: (() => void) | null = null) {
   activeLenis = lenis;
   reducedMotionActive = reducedMotion;
+  startScrollDriver = startDriver;
 }
 
 export function getScrollController() {
@@ -63,7 +65,8 @@ export function scrollToHash(hash: string, { history = 'push', immediate = false
 
   if (activeLenis && !reducedMotionActive) {
     activeLenis.scrollTo(target, {
-      offset: -getHeaderOffset(),
+      // Lenis 1.3.x already includes the target's CSS scroll-margin in its calculation.
+      offset: 0,
       immediate,
       duration: immediate ? 0 : navDuration,
       easing: navEaseOut,
@@ -71,6 +74,7 @@ export function scrollToHash(hash: string, { history = 'push', immediate = false
       force: true,
       userData: { source: 'section-navigation' },
     });
+    startScrollDriver?.();
     return true;
   }
 

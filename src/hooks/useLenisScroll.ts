@@ -68,21 +68,42 @@ export function useLenisScroll(reducedMotion: boolean) {
       autoRaf: false,
       prevent: (node) => Boolean(node.closest('[data-lenis-prevent], [data-lenis-prevent-wheel], [data-lenis-prevent-touch]')),
     });
-    setScrollController(lenis, false);
+    let frame: number | null = null;
 
     const update = (time: number) => {
-      lenis.raf(time * 1000);
+      frame = null;
+      lenis.raf(time);
+      if (lenis.isScrolling) startDriver();
     };
 
+    const startDriver = () => {
+      if (frame === null && document.visibilityState !== 'hidden') {
+        frame = window.requestAnimationFrame(update);
+      }
+    };
+
+    const stopDriver = () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = null;
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') stopDriver();
+      else if (lenis.isScrolling) startDriver();
+    };
+
+    setScrollController(lenis, false, startDriver);
+    lenis.on('virtual-scroll', startDriver);
     lenis.on('scroll', ScrollTrigger.update);
-    gsap.ticker.add(update);
-    gsap.ticker.lagSmoothing(0);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     refreshAfterReady();
 
     return () => {
       setScrollController(null, reducedMotion);
+      stopDriver();
+      lenis.off('virtual-scroll', startDriver);
       lenis.off('scroll', ScrollTrigger.update);
-      gsap.ticker.remove(update);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       lenis.destroy();
       window.history.scrollRestoration = previousScrollRestoration;
       window.removeEventListener('popstate', handleHistoryScroll);

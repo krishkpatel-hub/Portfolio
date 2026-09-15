@@ -108,8 +108,6 @@ export function Hero({ personal }: HeroProps) {
       <motion.a
         href="#about"
         className="absolute bottom-8 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center gap-3 font-mono text-[0.68rem] uppercase tracking-normal text-zinc-500 md:flex"
-        animate={reducedMotion ? undefined : { y: [0, 8, 0] }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
       >
         Scroll
         <span className="h-12 w-px bg-gradient-to-b from-white/70 to-transparent" />

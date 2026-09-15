@@ -31,6 +31,15 @@ interface MeshPhase {
   lastTime: number;
 }
 
+interface PointerState {
+  x: number;
+  y: number;
+  smoothedX: number;
+  smoothedY: number;
+  targetInfluence: number;
+  influence: number;
+}
+
 interface PulseBuffers {
   x: Float32Array;
   age: Float32Array;
@@ -51,13 +60,14 @@ const emptyPoints: PointBuffers = {
 };
 
 const maxDevicePixelRatio = 1.5;
-const targetFrameInterval = 1000 / 48;
+const targetFrameInterval = 1000 / 30;
 const pulseCount = 8;
+const alphaPalette = Array.from({ length: 16 }, (_, index) => `rgba(231, 229, 228, ${(index / 15) * 0.54})`);
 
 const meshTuning = {
-  desktopSpacing: 15,
-  tabletSpacing: 18,
-  mobileSpacing: 24,
+  desktopSpacing: 19,
+  tabletSpacing: 22,
+  mobileSpacing: 28,
   idleSpeed: 6,
   playSpeed: 34,
   idleWaveHeight: 3.5,
@@ -74,6 +84,27 @@ const meshTuning = {
   bassPeakThreshold: 0.105,
   bassPeakFloor: 0.18,
   bassPeakCooldown: 0.28,
+  // Depth range produced by buildField's clamp(0.22 + horizon * 0.78 + centerDepth * 0.24, 0.16, 1.22).
+  depthFloor: 0.16,
+  depthSpan: 1.06,
+  // Parallax: far points (low depthNorm) scroll/ripple slower than near points.
+  parallaxMin: 0.52,
+  parallaxRange: 0.48,
+  // Subtle atmospheric fade for far points, layered on top of existing depth/mask fades.
+  farFadeMin: 0.85,
+  farFadeRange: 0.15,
+  // Cursor-reactive distortion field: a radial displacement, not a glow.
+  cursorRadius: 150,
+  cursorPush: 20,
+  cursorReactMin: 0.35,
+  cursorReactRange: 0.65,
+  cursorFollowRate: 12,
+  cursorAttack: 0.14,
+  cursorRelease: 0.045,
+  // HUD reticle drawn at the smoothed cursor position: thin strokes only, no blur/shadow.
+  reticleInner: 6,
+  reticleOuter: 13,
+  reticleRing: 20,
 };
 
 function averageBand(data: ArrayLike<number>, startRatio: number, endRatio: number) {
@@ -104,9 +135,45 @@ function smoothEnvelope(current: number, target: number, attack: number, release
   return current + (target - current) * (target > current ? attack : release);
 }
 
+// Precise HUD-style reticle at the cursor: crosshair ticks, a thin ring, a single-pixel
+// center dot. Strokes only — no shadowBlur, no gradients.
+function drawReticle(context: CanvasRenderingContext2D, x: number, y: number, alphaScale: number) {
+  const inner = meshTuning.reticleInner;
+  const outer = meshTuning.reticleOuter;
+
+  context.save();
+  context.lineWidth = 1;
+
+  context.strokeStyle = `rgba(231, 229, 228, ${(0.42 * alphaScale).toFixed(3)})`;
+  context.beginPath();
+  context.moveTo(x, y - outer);
+  context.lineTo(x, y - inner);
+  context.moveTo(x, y + inner);
+  context.lineTo(x, y + outer);
+  context.moveTo(x - outer, y);
+  context.lineTo(x - inner, y);
+  context.moveTo(x + inner, y);
+  context.lineTo(x + outer, y);
+  context.stroke();
+
+  context.strokeStyle = `rgba(231, 229, 228, ${(0.2 * alphaScale).toFixed(3)})`;
+  context.beginPath();
+  context.arc(x, y, meshTuning.reticleRing, 0, Math.PI * 2);
+  context.stroke();
+
+  context.fillStyle = `rgba(231, 229, 228, ${(0.6 * alphaScale).toFixed(3)})`;
+  context.beginPath();
+  context.arc(x, y, 1.3, 0, Math.PI * 2);
+  context.fill();
+
+  context.restore();
+}
+
 export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<number | null>(null);
+  const startRef = useRef<() => void>(() => undefined);
+  const stopRef = useRef<() => void>(() => undefined);
   const pointsRef = useRef<PointBuffers>(emptyPoints);
   const frequencyDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const visibleRef = useRef(true);
@@ -123,15 +190,34 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
     active: new Uint8Array(pulseCount),
     writeIndex: 0,
   });
-  const sizeRef = useRef({ width: 0, height: 0, dpr: 1, mobile: false, tablet: false });
+  const sizeRef = useRef({ width: 0, height: 0, dpr: 1, mobile: false, tablet: false, pageLeft: 0, pageTop: 0 });
   const lastFrameTimeRef = useRef(0);
+  const pointerRef = useRef<PointerState>({
+    x: -1000,
+    y: -1000,
+    smoothedX: -1000,
+    smoothedY: -1000,
+    targetInfluence: 0,
+    influence: 0,
+  });
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
+    if (!isPlaying) {
+      const energy = energyRef.current;
+      energy.bass = 0;
+      energy.mid = 0;
+      energy.high = 0;
+      energy.motion = 0;
+      pulsesRef.current.active.fill(0);
+    }
+    startRef.current();
   }, [isPlaying]);
 
   useEffect(() => {
     reducedMotionRef.current = reducedMotion;
+    if (reducedMotion) stopRef.current();
+    else startRef.current();
   }, [reducedMotion]);
 
   useEffect(() => {
@@ -175,7 +261,16 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
-      sizeRef.current = { width, height, dpr, mobile, tablet };
+      sizeRef.current = {
+        width,
+        height,
+        dpr,
+        mobile,
+        tablet,
+        pageLeft: rect.left + window.scrollX,
+        pageTop: rect.top + window.scrollY,
+      };
+      canvas.dataset.pointCount = String(count);
 
       for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
         for (let column = 0; column < columns; column += 1) {
@@ -277,7 +372,7 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       const energy = energyRef.current;
       const phase = phaseRef.current;
       const seconds = time * 0.001;
-      const deltaSeconds = phase.lastTime ? clamp(seconds - phase.lastTime, 0.001, 0.05) : 1 / 48;
+      const deltaSeconds = phase.lastTime ? clamp(seconds - phase.lastTime, 0.001, 0.05) : 1 / 30;
       phase.lastTime = seconds;
 
       updateAudio(deltaSeconds);
@@ -300,21 +395,46 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       const lateralShift = reduced ? 0 : meshTuning.bassLateralShift * bass + 3 * motion;
       const perspectiveCenterX = width * 0.52;
 
+      // Cursor distortion is a per-frame field, not per-point state: ease the influence
+      // envelope and the followed position once here, then reuse for every point below.
+      const pointer = pointerRef.current;
+      if (!reduced) {
+        const followLerp = clamp(deltaSeconds * meshTuning.cursorFollowRate, 0, 1);
+        pointer.influence = smoothEnvelope(
+          pointer.influence,
+          pointer.targetInfluence,
+          meshTuning.cursorAttack,
+          meshTuning.cursorRelease,
+        );
+        pointer.smoothedX += (pointer.x - pointer.smoothedX) * followLerp;
+        pointer.smoothedY += (pointer.y - pointer.smoothedY) * followLerp;
+      } else {
+        pointer.influence = 0;
+      }
+      const pointerInfluence = pointer.influence;
+      const pointerX = pointer.smoothedX;
+      const pointerY = pointer.smoothedY;
+      const cursorRadiusSq = meshTuning.cursorRadius * meshTuning.cursorRadius;
+
       for (let index = 0; index < points.count; index += 1) {
         const baseX = points.x[index];
         const baseY = points.y[index];
-        const renderX = wrap(baseX + phase.x, points.wrapWidth) - points.spacing * 4;
+        const depth = points.depth[index];
+        const depthNorm = clamp01((depth - meshTuning.depthFloor) / meshTuning.depthSpan);
+        // Parallax: points further back (lower depthNorm) scroll and ripple slower.
+        const parallaxFactor = meshTuning.parallaxMin + depthNorm * meshTuning.parallaxRange;
+        const localPhase = phase.x * parallaxFactor;
+        const renderX = wrap(baseX + localPhase, points.wrapWidth) - points.spacing * 4;
         if (renderX < -points.spacing * 2 || renderX > width + points.spacing * 2) continue;
 
         const ny = baseY / height;
-        const depth = points.depth[index];
         const visibility = points.mask[index] * clamp(depth, 0.12, 1);
         if (visibility <= 0.012) continue;
 
         const perspective = 0.58 + depth * 0.52;
         const projectedX = perspectiveCenterX + (renderX - perspectiveCenterX) * perspective;
         const projectedY = baseY * (0.72 + depth * 0.28) + height * (1 - depth) * 0.08;
-        const meshX = baseX + phase.x;
+        const meshX = baseX + localPhase;
         const meshY = baseY;
         const broadWaveA = Math.sin(meshX * 0.010 + meshY * 0.006 + seconds * (0.55 + motion * 0.42));
         const broadWaveB = Math.sin(meshX * -0.0065 + meshY * 0.012 - seconds * (0.38 + motion * 0.28));
@@ -333,40 +453,83 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
           pulseShift += Math.cos(distance * 0.018) * envelope * pulses.amplitude[pulseIndex];
         }
 
+        // Cursor-reactive distortion: a radial repulsion field around the pointer, not a
+        // decorative ripple. Falls off smoothly with distance (smoothstep) and reacts more
+        // for near (high-depth) points than far ones, consistent with the parallax above.
+        let cursorPushX = 0;
+        let cursorPushY = 0;
+        let cursorBoost = 0;
+        if (pointerInfluence > 0.001) {
+          const cdx = projectedX - pointerX;
+          const cdy = projectedY - pointerY;
+          const cDistSq = cdx * cdx + cdy * cdy;
+          if (cDistSq < cursorRadiusSq) {
+            const cDist = Math.sqrt(cDistSq) || 0.0001;
+            const t = 1 - cDist / meshTuning.cursorRadius;
+            const envelope = t * t * (3 - 2 * t) * pointerInfluence;
+            const reactivity = meshTuning.cursorReactMin + depthNorm * meshTuning.cursorReactRange;
+            const push = meshTuning.cursorPush * envelope * reactivity * visibility;
+            cursorPushX = (cdx / cDist) * push;
+            cursorPushY = (cdy / cDist) * push;
+            cursorBoost = envelope * reactivity;
+          }
+        }
+
         const terrain = broadWaveA * 0.54 + broadWaveB * 0.34 + broadWaveC * 0.28;
         const lowerWeight = clamp01((ny - 0.1) / 0.82);
         const edgeReadability = 1 - clamp01((0.54 - ny) / 0.38) * 0.62;
+        const farFade = meshTuning.farFadeMin + depthNorm * meshTuning.farFadeRange;
         const yDisplacement =
           terrain * waveHeight * visibility * (0.42 + lowerWeight * 0.74) +
           midRipple * visibility +
-          pulseWave * meshTuning.pulseHeight * visibility;
+          pulseWave * meshTuning.pulseHeight * visibility +
+          cursorPushY;
         const xDisplacement =
           (terrain * lateralShift + pulseShift * meshTuning.pulseLateralShift) * visibility +
-          Math.sin(points.row[index] * 0.42 + seconds * 0.24) * 1.8 * motion * visibility;
+          Math.sin(points.row[index] * 0.42 + seconds * 0.24) * 1.8 * motion * visibility +
+          cursorPushX;
         const crest = clamp01((terrain + 1.5) / 3 + pulseWave * 0.24 + bass * 0.16);
         const radius = Math.max(
           0.32,
-          (0.34 + depth * 0.42 + crest * 0.34 + bass * 0.42 + Math.abs(pulseWave) * 0.52) * densityScale,
+          (0.34 + depth * 0.42 + crest * 0.34 + bass * 0.42 + Math.abs(pulseWave) * 0.52) *
+            densityScale *
+            (1 + cursorBoost * 0.5),
         );
         const alpha = Math.min(
           0.54,
-          (0.05 + visibility * 0.2 + crest * 0.07 + bass * 0.08 + mid * 0.035 + high * meshTuning.highBrightness) *
+          (0.05 +
+            visibility * 0.2 +
+            crest * 0.07 +
+            bass * 0.08 +
+            mid * 0.035 +
+            high * meshTuning.highBrightness +
+            cursorBoost * 0.16) *
             edgeReadability *
-            (mobile ? 0.78 : 1),
+            (mobile ? 0.78 : 1) *
+            farFade,
         );
 
         context.beginPath();
-        context.fillStyle = `rgba(231, 229, 228, ${alpha})`;
+        const alphaIndex = Math.min(
+          alphaPalette.length - 1,
+          Math.round((alpha / 0.54) * (alphaPalette.length - 1)),
+        );
+        context.fillStyle = alphaPalette[alphaIndex];
         context.arc(projectedX + xDisplacement, projectedY + yDisplacement, radius, 0, Math.PI * 2);
         context.fill();
+      }
+
+      if (!reduced && pointerInfluence > 0.015) {
+        drawReticle(context, pointerX, pointerY, pointerInfluence);
       }
     };
 
     const animate = (time: number) => {
-      const shouldRender = documentVisibleRef.current && (visibleRef.current || isPlayingRef.current);
+      const shouldRender = documentVisibleRef.current && visibleRef.current;
 
       if (!shouldRender) {
         frameRef.current = null;
+        canvas.dataset.rendering = 'false';
         return;
       }
 
@@ -375,15 +538,30 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
         draw(time);
       }
 
-      if (!reducedMotionRef.current && (visibleRef.current || isPlayingRef.current)) {
+      const pointer = pointerRef.current;
+      const pointerMoving =
+        Math.abs(pointer.x - pointer.smoothedX) > 0.2 ||
+        Math.abs(pointer.y - pointer.smoothedY) > 0.2 ||
+        Math.abs(pointer.targetInfluence - pointer.influence) > 0.01;
+
+      if (!reducedMotionRef.current && (isPlayingRef.current || pointerMoving)) {
         frameRef.current = requestAnimationFrame(animate);
       } else {
         frameRef.current = null;
+        canvas.dataset.rendering = 'false';
       }
     };
 
     const start = () => {
-      if (frameRef.current === null && !reducedMotionRef.current) {
+      if (
+        frameRef.current === null &&
+        !reducedMotionRef.current &&
+        visibleRef.current &&
+        documentVisibleRef.current
+      ) {
+        phaseRef.current.lastTime = 0;
+        lastFrameTimeRef.current = 0;
+        canvas.dataset.rendering = 'true';
         frameRef.current = requestAnimationFrame(animate);
       }
     };
@@ -393,58 +571,101 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
         cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
       }
+      canvas.dataset.rendering = 'false';
     };
+
+    startRef.current = start;
+    stopRef.current = stop;
 
     const handleVisibilityChange = () => {
       documentVisibleRef.current = document.visibilityState !== 'hidden';
-      if (documentVisibleRef.current && (visibleRef.current || isPlayingRef.current)) {
-        start();
+      if (documentVisibleRef.current && visibleRef.current) {
+        draw(0);
+        if (isPlayingRef.current) start();
       } else {
         stop();
       }
     };
 
+    // Cursor tracking for the distortion field + reticle. Mouse/pen only — touch drags
+    // shouldn't drag the grid around. Position is stored in canvas-local CSS-pixel space,
+    // matching the coordinate frame draw() already renders in.
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerType === 'touch' || !visibleRef.current || reducedMotionRef.current) return;
+
+      const { pageLeft, pageTop, width, height } = sizeRef.current;
+      const localX = event.clientX + window.scrollX - pageLeft;
+      const localY = event.clientY + window.scrollY - pageTop;
+      const pointer = pointerRef.current;
+      const margin = 60;
+
+      pointer.x = localX;
+      pointer.y = localY;
+      pointer.targetInfluence =
+        localX >= -margin && localX <= width + margin && localY >= -margin && localY <= height + margin
+          ? 1
+          : 0;
+      start();
+    };
+
+    const handlePointerLeaveWindow = (event: MouseEvent) => {
+      if (!event.relatedTarget) {
+        pointerRef.current.targetInfluence = 0;
+        start();
+      }
+    };
+
+    const pointerEnabled = window.matchMedia('(pointer: fine) and (hover: hover)').matches;
+    if (pointerEnabled) {
+      window.addEventListener('pointermove', handlePointerMove, { passive: true });
+      document.addEventListener('mouseout', handlePointerLeaveWindow);
+    }
+
     buildField();
     draw(0);
+    canvas.dataset.rendering = 'false';
 
     const resizeObserver = new ResizeObserver(() => {
       buildField();
       draw(0);
-      start();
+      if (isPlayingRef.current) start();
     });
     resizeObserver.observe(canvas);
 
     const intersectionObserver = new IntersectionObserver(
       ([entry]) => {
         visibleRef.current = Boolean(entry?.isIntersecting);
-        if (visibleRef.current || isPlayingRef.current) start();
-        if (!visibleRef.current && !isPlayingRef.current) stop();
+        if (visibleRef.current) {
+          draw(0);
+          if (isPlayingRef.current) start();
+        } else {
+          const pointer = pointerRef.current;
+          pointer.targetInfluence = 0;
+          pointer.influence = 0;
+          stop();
+        }
       },
-      { rootMargin: '260px 0px' },
+      { rootMargin: '0px' },
     );
     intersectionObserver.observe(canvas);
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    if (!reducedMotionRef.current) start();
+    if (isPlayingRef.current && !reducedMotionRef.current) start();
 
     return () => {
       stop();
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (pointerEnabled) {
+        window.removeEventListener('pointermove', handlePointerMove);
+        document.removeEventListener('mouseout', handlePointerLeaveWindow);
+      }
+      startRef.current = () => undefined;
+      stopRef.current = () => undefined;
     };
   }, [analyserRef]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    if (reducedMotion && frameRef.current !== null) {
-      cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-    }
-  }, [reducedMotion]);
 
   return <canvas ref={canvasRef} className="hero-wavy-dot-field" aria-hidden="true" />;
 }

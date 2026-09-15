@@ -66,7 +66,7 @@ export function SmoothScrollIndicator({ reducedMotion }: SmoothScrollIndicatorPr
       }
 
       thumb.style.transform = `translate3d(0, ${progress.rendered * travel}px, 0)`;
-      if (remaining < 0.0008 && rail.dataset.active !== 'true') {
+      if (remaining < 0.0008) {
         frameRef.current = null;
       } else {
         frameRef.current = window.requestAnimationFrame(render);
@@ -80,7 +80,6 @@ export function SmoothScrollIndicator({ reducedMotion }: SmoothScrollIndicatorPr
     };
 
     const handleScrollActivity = () => {
-      updateDocumentHeight();
       setActive(true);
       scheduleIdle();
       startRender();
@@ -96,8 +95,11 @@ export function SmoothScrollIndicator({ reducedMotion }: SmoothScrollIndicatorPr
     resizeObserver.observe(document.body);
 
     const lenis = getScrollController();
-    lenis?.on('scroll', handleScrollActivity);
-    window.addEventListener('scroll', handleScrollActivity, { passive: true });
+    if (lenis) {
+      lenis.on('scroll', handleScrollActivity);
+    } else {
+      window.addEventListener('scroll', handleScrollActivity, { passive: true });
+    }
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
 
@@ -111,7 +113,7 @@ export function SmoothScrollIndicator({ reducedMotion }: SmoothScrollIndicatorPr
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
       if (idleTimeoutRef.current !== null) window.clearTimeout(idleTimeoutRef.current);
       lenis?.off('scroll', handleScrollActivity);
-      window.removeEventListener('scroll', handleScrollActivity);
+      if (!lenis) window.removeEventListener('scroll', handleScrollActivity);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
       resizeObserver.disconnect();

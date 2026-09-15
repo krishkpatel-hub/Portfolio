@@ -39,7 +39,7 @@ export function Navigation({ nav, personal }: NavigationProps) {
   };
 
   return (
-    <header data-site-header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-black/55 backdrop-blur-xl">
+    <header data-site-header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-black/90">
       <nav data-site-header-bar className="mx-auto flex h-16 w-[min(1180px,calc(100%-2rem))] items-center justify-between" aria-label="Primary navigation">
         <a href="#top" onClick={(event) => handleNavClick(event, '#top')} onKeyDown={handleNavKeyDown} className="font-mono text-xs font-semibold uppercase tracking-normal text-white">
           {personal.name}

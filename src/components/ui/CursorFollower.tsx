@@ -49,11 +49,20 @@ export function CursorFollower() {
       interactive: false,
       pressed: false,
       label: '',
+      target: null as EventTarget | null,
     };
 
-    let frame = 0;
+    let frame: number | null = null;
+
+    const stopFrame = () => {
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+        frame = null;
+      }
+    };
 
     const setVisible = (visible: boolean) => {
+      if (pointer.visible === visible) return;
       pointer.visible = visible;
       dot.dataset.visible = String(visible);
       ring.dataset.visible = String(visible);
@@ -63,9 +72,12 @@ export function CursorFollower() {
       const element = target instanceof Element ? target.closest(interactiveSelector) : null;
       const cursorMode = element?.getAttribute('data-cursor') ?? '';
       const interactive = Boolean(element);
+      const label = cursorMode === 'view' ? 'VIEW' : cursorMode === 'drag' ? 'DRAG' : '';
+
+      if (pointer.interactive === interactive && pointer.label === label) return;
 
       pointer.interactive = interactive;
-      pointer.label = cursorMode === 'view' ? 'VIEW' : cursorMode === 'drag' ? 'DRAG' : '';
+      pointer.label = label;
 
       dot.dataset.interactive = String(interactive);
       ring.dataset.interactive = String(interactive);
@@ -77,6 +89,30 @@ export function CursorFollower() {
       pointer.pressed = pressed;
       dot.dataset.pressed = String(pressed);
       ring.dataset.pressed = String(pressed);
+    };
+
+    const animate = () => {
+      const deltaX = pointer.targetX - pointer.ringX;
+      const deltaY = pointer.targetY - pointer.ringY;
+      pointer.ringX += deltaX * 0.22;
+      pointer.ringY += deltaY * 0.22;
+
+      if (Math.abs(deltaX) < 0.12 && Math.abs(deltaY) < 0.12) {
+        pointer.ringX = pointer.targetX;
+        pointer.ringY = pointer.targetY;
+      }
+
+      ring.style.transform = `translate3d(${pointer.ringX}px, ${pointer.ringY}px, 0) translate3d(-50%, -50%, 0)`;
+
+      if (pointer.ringX === pointer.targetX && pointer.ringY === pointer.targetY) {
+        frame = null;
+      } else {
+        frame = requestAnimationFrame(animate);
+      }
+    };
+
+    const startFrame = () => {
+      if (frame === null && pointer.visible) frame = requestAnimationFrame(animate);
     };
 
     const handlePointerMove = (event: PointerEvent) => {
@@ -91,11 +127,19 @@ export function CursorFollower() {
         pointer.initialized = true;
       }
 
+      dot.style.transform = `translate3d(${pointer.targetX}px, ${pointer.targetY}px, 0) translate3d(-50%, -50%, 0)`;
       setVisible(true);
-      setInteractive(event.target);
+      if (pointer.target !== event.target) {
+        pointer.target = event.target;
+        setInteractive(event.target);
+      }
+      startFrame();
     };
 
-    const handlePointerLeave = () => setVisible(false);
+    const handlePointerLeave = () => {
+      setVisible(false);
+      stopFrame();
+    };
     const handlePointerEnter = () => {
       if (pointer.initialized) setVisible(true);
     };
@@ -104,24 +148,14 @@ export function CursorFollower() {
     const handleBlur = () => {
       updatePressed(false);
       setVisible(false);
+      stopFrame();
     };
     const handleVisibilityChange = () => {
       if (document.hidden) {
         updatePressed(false);
         setVisible(false);
+        stopFrame();
       }
-    };
-
-    const animate = () => {
-      if (pointer.initialized) {
-        pointer.ringX += (pointer.targetX - pointer.ringX) * 0.15;
-        pointer.ringY += (pointer.targetY - pointer.ringY) * 0.15;
-
-        dot.style.transform = `translate3d(${pointer.targetX}px, ${pointer.targetY}px, 0) translate3d(-50%, -50%, 0)`;
-        ring.style.transform = `translate3d(${pointer.ringX}px, ${pointer.ringY}px, 0) translate3d(-50%, -50%, 0)`;
-      }
-
-      frame = requestAnimationFrame(animate);
     };
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
@@ -132,10 +166,8 @@ export function CursorFollower() {
     window.addEventListener('blur', handleBlur);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    frame = requestAnimationFrame(animate);
-
     return () => {
-      cancelAnimationFrame(frame);
+      stopFrame();
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerleave', handlePointerLeave);
       window.removeEventListener('pointerenter', handlePointerEnter);
