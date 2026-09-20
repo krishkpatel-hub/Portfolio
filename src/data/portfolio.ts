@@ -170,10 +170,10 @@ export const portfolioData: PortfolioData = {
       description:
         'Built production software across warehouse management, food-service management, reporting, and deployment support workflows.',
       achievements: [
-        'Architected and shipped client-facing B2B warehouse-management workflows with React, JavaScript, Node.js, Express.js, and MongoDB, reducing engineering support requests by 25%.',
-        'Translated customer requirements into responsive React interfaces, REST APIs, and backend integrations for 5+ enterprise clients, reducing content-update turnaround by 35%.',
-        'Designed MongoDB data models and optimized SQL/ETL reporting pipelines for 200K+ monthly transactions, supporting real-time inventory and revenue analytics; cut manual analyst review by 40%.',
-        'Performed root-cause analysis across React, Express, MongoDB, and SQL; tested and shipped production fixes across 10+ deployments, reducing average issue-resolution time by 35%.',
+        'Architected and shipped client-facing B2B warehouse workflows using React, JavaScript, Node.js, Express.js, and MongoDB; translated requirements from 5+ enterprise clients into responsive interfaces, REST APIs, and backend integrations, reducing support requests by 25% and content-update turnaround by 35%.',
+        'Designed MongoDB data schemas and optimized SQL/ETL reporting pipelines processing 200K+ monthly transactions, supporting real-time inventory and revenue analytics while reducing manual analyst review by 40%.',
+        'Performed root-cause analysis across React, Express.js, MongoDB, and SQL; tested and shipped production fixes across 10+ deployments, reducing average issue-resolution time by 35%.',
+        'Built a lead-scoring pipeline (Python, scikit-learn, HDBSCAN, LightGBM, FastAPI, PostgreSQL) ranking 500+ convenience and liquor-store prospects by similarity to current clients; improved top-50 precision over K-means.',
       ],
       technologies: ['React', 'Node.js', 'Express.js', 'MongoDB', 'SQL', 'ETL', 'REST APIs'],
       metrics: ['25% FEWER SUPPORT REQUESTS', '35% LESS CONTENT-UPDATE TIME', '40% LESS MANUAL REVIEW'],
@@ -186,13 +186,13 @@ export const portfolioData: PortfolioData = {
       description:
         'Built an accounting and advisory web platform with LLM-powered inquiry routing, traceable case summaries, and protected client workflows.',
       achievements: [
-        'Engineered RFF Books using React, Vite, Node.js, and PostgreSQL, enforcing RLS-based tenant isolation, exact accounting, migrations, and audit provenance.',
-        'Containerized the platform and Python document-parser worker with Docker; deployed services on AWS using GitHub Actions CI/CD and a provider-neutral AI layer, reducing document-processing time by 15%.',
-        'Built the Astro/TypeScript RFF site and knowledge-grounded AskRFF chatbot, using server-side OpenAI calls, curated answers, and deterministic routing to reduce manual inquiry-routing time by 20%.',
-        'Built a password-protected lead-outreach CRM with Vercel APIs and Google Sheets; automated status-aware Gmail follow-ups through Apps Script.',
+        'Owned the design, development, and deployment of an accounting and advisory web platform using Astro, TypeScript, React, Node.js, and PostgreSQL; built responsive service-discovery, consultation-intake, location, and client-portal interfaces, implemented consent flows, sensitive-data warnings, and input validation, and tested production releases to improve privacy and reliability.',
+        'Integrated an LLM chatbot and multi-step agentic workflows to answer service questions, classify client intent, validate outputs, and route unresolved inquiries to the right team member, making inquiry handling approximately 4× faster.',
+        'Built an LLM case-summary pipeline that retrieved and synthesized cross-repository information into structured summaries with source traceability, making case preparation approximately 2× faster.',
+        'Built a multi-label client-classification model (scikit-learn) across ROC, income-tax/audit, and GST workflows; a Decision Tree lifted macro-F1 by 7% over Logistic Regression, with rule-based explanations for chartered accountants.',
       ],
       technologies: ['LLM INTEGRATION', 'AGENTIC WORKFLOWS', 'INTENT CLASSIFICATION', 'INPUT VALIDATION', 'SOURCE TRACEABILITY'],
-      metrics: ['≈20% LESS MANUAL ROUTING TIME', '≈15% LESS SUMMARY PREPARATION TIME'],
+      metrics: ['≈4× FASTER INQUIRY HANDLING', '≈2× FASTER CASE PREPARATION'],
     },
   ],
   leadership: [
