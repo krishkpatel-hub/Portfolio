@@ -190,7 +190,7 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
     active: new Uint8Array(pulseCount),
     writeIndex: 0,
   });
-  const sizeRef = useRef({ width: 0, height: 0, dpr: 1, mobile: false, tablet: false, pageLeft: 0, pageTop: 0 });
+  const sizeRef = useRef({ width: 0, height: 0, dpr: 1, mobile: false, tablet: false, pageLeft: 0, pageTop: 0, stickyStart: 0, stickyDistance: 0 });
   const lastFrameTimeRef = useRef(0);
   const pointerRef = useRef<PointerState>({
     x: -1000,
@@ -233,6 +233,13 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
 
     const buildField = () => {
       const rect = canvas.getBoundingClientRect();
+      const stage = canvas.parentElement;
+      const section = stage?.parentElement;
+      const stickyBounds = stage && section && getComputedStyle(stage).position === 'sticky'
+        ? section.getBoundingClientRect()
+        : null;
+      const stickyStart = stickyBounds ? stickyBounds.top + window.scrollY : 0;
+      const stickyDistance = stickyBounds ? Math.max(0, stickyBounds.height - rect.height) : 0;
       const dpr = Math.min(window.devicePixelRatio || 1, maxDevicePixelRatio);
       const width = Math.max(1, Math.floor(rect.width));
       const height = Math.max(1, Math.floor(rect.height));
@@ -268,7 +275,9 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
         mobile,
         tablet,
         pageLeft: rect.left + window.scrollX,
-        pageTop: rect.top + window.scrollY,
+        pageTop: rect.top + window.scrollY - clamp(window.scrollY - stickyStart, 0, stickyDistance),
+        stickyStart,
+        stickyDistance,
       };
       canvas.dataset.pointCount = String(count);
 
@@ -593,9 +602,10 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerType === 'touch' || !visibleRef.current || reducedMotionRef.current) return;
 
-      const { pageLeft, pageTop, width, height } = sizeRef.current;
+      const { pageLeft, pageTop, width, height, stickyStart, stickyDistance } = sizeRef.current;
       const localX = event.clientX + window.scrollX - pageLeft;
-      const localY = event.clientY + window.scrollY - pageTop;
+      // Account for the hero's sticky travel using cached bounds, without layout reads on input.
+      const localY = event.clientY + window.scrollY - pageTop - clamp(window.scrollY - stickyStart, 0, stickyDistance);
       const pointer = pointerRef.current;
       const margin = 60;
 
@@ -631,6 +641,7 @@ export function WavyDotField({ analyserRef, isPlaying, reducedMotion }: WavyDotF
       if (isPlayingRef.current) start();
     });
     resizeObserver.observe(canvas);
+    if (canvas.parentElement?.parentElement) resizeObserver.observe(canvas.parentElement.parentElement);
 
     const intersectionObserver = new IntersectionObserver(
       ([entry]) => {

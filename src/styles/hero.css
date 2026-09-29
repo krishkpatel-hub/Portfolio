@@ -1,0 +1,168 @@
+.portrait-hero {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-stage {
+  position: relative;
+  min-height: 100svh;
+  padding: 100px 0 24px;
+  overflow: clip;
+}
+
+.hero-composition {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-areas: 'status' 'name' 'portrait' 'introduction' 'actions';
+  gap: 24px;
+  width: min(1180px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+.hero-status { grid-area: status; }
+.hero-name {
+  grid-area: name;
+  margin: 0;
+  font-size: 4.5rem;
+  font-weight: 900;
+  line-height: 0.87;
+  text-transform: uppercase;
+  color: var(--text-strong);
+}
+.hero-name span { display: block; }
+.hero-portrait-area {
+  grid-area: portrait;
+  position: relative;
+  width: 11.5rem;
+  max-width: 100%;
+  aspect-ratio: 1;
+  margin: 6px auto;
+}
+.hero-portrait {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--bg);
+}
+.hero-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 44%;
+}
+.hero-introduction { grid-area: introduction; }
+.hero-tagline {
+  max-width: 37rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.22;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.hero-availability { margin-top: 16px; line-height: 1.65; }
+.hero-actions { grid-area: actions; }
+.hero-orb-depth {
+  position: absolute;
+  width: 130%;
+  aspect-ratio: 1;
+  left: -28%;
+  top: -20%;
+  pointer-events: none;
+}
+.hero-orb, .hero-secondary {
+  width: 100%;
+  height: 100%;
+  stroke: rgba(231, 229, 228, 0.2);
+  stroke-width: 0.85;
+}
+.hero-orb { transform: rotate(-24deg); }
+.hero-secondary-depth {
+  position: absolute;
+  left: 3%;
+  bottom: 13rem;
+  width: 6.5rem;
+  aspect-ratio: 1;
+  opacity: 0.5;
+  pointer-events: none;
+  display: none;
+}
+.portrait-hero .hero-soundtrack {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: min(46rem, calc(100% - 40px));
+  margin: 32px auto 0;
+}
+.hero-scroll-cue { display: none; }
+
+/* The following section is an opaque foreground plane, not another pinned scene. */
+.portrait-hero + #about { position: relative; isolation: isolate; }
+.portrait-hero + #about::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0 calc((100vw - 100%) / -2);
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 640px) {
+  .hero-name { font-size: 6.5rem; }
+  .hero-portrait-area { width: 15rem; }
+  .hero-tagline { font-size: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .hero-stage { display: flex; flex-direction: column; }
+  .hero-composition {
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) 23rem;
+    grid-template-areas: 'status portrait' 'name portrait' 'introduction portrait' 'actions portrait';
+    align-content: center;
+    column-gap: 3rem;
+  }
+  .hero-name { font-size: 8rem; }
+  .hero-portrait-area { width: 20rem; align-self: center; }
+  .hero-tagline { font-size: 1.65rem; }
+  .hero-secondary-depth { display: block; }
+  .portrait-hero .hero-soundtrack { margin-left: max(20px, calc((100% - 1180px) / 2)); }
+  .hero-scroll-cue {
+    position: absolute;
+    right: max(32px, calc((100% - 1180px) / 2));
+    bottom: 32px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .hero-scroll-cue span { width: 48px; height: 1px; background: var(--line-strong); }
+}
+
+@media (min-width: 1400px) {
+  .hero-name { font-size: 9rem; }
+  .hero-portrait-area { width: 22rem; }
+  .hero-tagline { font-size: 1.8rem; }
+}
+
+@media (min-width: 1024px) and (min-height: 740px) and (prefers-reduced-motion: no-preference) {
+  .portrait-hero[data-depth='true'] { height: 150svh; }
+  .portrait-hero[data-depth='true'] .hero-stage { position: sticky; top: 0; height: 100svh; }
+}
+
+@media (min-width: 1024px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .hero-orb { animation: hero-orbit 64s linear infinite; }
+  .hero-secondary { animation: hero-drift 48s ease-in-out infinite alternate; }
+  .hero-orb, .hero-secondary { animation-play-state: paused; }
+  .portrait-hero[data-animating='true'] .hero-orb,
+  .portrait-hero[data-animating='true'] .hero-secondary { animation-play-state: running; }
+}
+
+@keyframes hero-orbit { to { transform: rotate(336deg); } }
+@keyframes hero-drift { from { transform: rotate(12deg); } to { transform: translateY(-8px) rotate(-20deg); } }
