@@ -1,5 +1,4 @@
 import { Terminal } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
 import { Reveal } from '../components/ui/Reveal';
 import type { PortfolioData } from '../types/portfolio';
 
@@ -10,8 +9,6 @@ interface AboutProps {
 }
 
 export function About({ about, education, personal }: AboutProps) {
-  const reducedMotion = useReducedMotion();
-
   return (
     <section id="about" className="section-shell">
       <Reveal>
@@ -21,23 +18,6 @@ export function About({ about, education, personal }: AboutProps) {
 
       <div className="mt-14 grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
         <Reveal className="space-y-6">
-          <motion.figure
-            className="portrait-frame relative max-w-[28rem] overflow-hidden rounded-lg"
-            initial={reducedMotion ? false : { opacity: 0, clipPath: 'inset(0 0 18% 0)' }}
-            whileInView={{ opacity: 1, clipPath: 'inset(0 0 0% 0)' }}
-            viewport={{ once: true, amount: 0.35 }}
-            transition={{ duration: reducedMotion ? 0.01 : 0.85, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <img
-              src="/krish-patel-profile.png"
-              alt="Portrait of Krish Patel"
-              loading="lazy"
-              onError={(event) => {
-                event.currentTarget.closest('figure')?.setAttribute('hidden', '');
-              }}
-            />
-          </motion.figure>
-
           <div className="flex flex-wrap gap-3">
             <span className="rounded-full border px-4 py-2 font-mono text-xs uppercase tracking-normal soft-border soft-muted">
               {personal.location}

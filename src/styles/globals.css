@@ -272,37 +272,92 @@ section[id] {
   opacity: 1;
 }
 
-.portrait-frame {
-  width: min(100%, 28rem);
-  aspect-ratio: 1456 / 1534;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+.hero-copy-layout {
+  display: grid;
+  align-content: center;
+  grid-template-areas: "badges" "name" "portrait" "intro" "cta";
+  min-width: 0;
 }
 
-.portrait-frame img {
+.hero-badges { grid-area: badges; }
+.hero-name { grid-area: name; min-width: 0; }
+.hero-intro { grid-area: intro; min-width: 0; }
+.hero-cta { grid-area: cta; }
+
+.hero-portrait-float {
+  grid-area: portrait;
+  width: min(12.5rem, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+
+.hero-portrait-hover {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  transition: transform 280ms ease;
+}
+
+.hero-portrait-hover::before {
+  position: absolute;
+  inset: -14px;
+  z-index: -1;
+  border-radius: 50%;
+  content: "";
+  background: radial-gradient(circle, rgba(231, 229, 228, 0.13) 46%, transparent 72%);
+  opacity: 0.2;
+  transition: opacity 280ms ease;
+}
+
+.hero-portrait-circle {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  transition: border-color 280ms ease;
+}
+
+.hero-portrait-circle img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center center;
+  object-position: 50% 45%;
   filter: grayscale(0.72) saturate(0.72) contrast(1.04) brightness(0.86);
-  transition:
-    filter 220ms ease,
-    transform 280ms ease;
 }
 
-.portrait-frame::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(5, 5, 5, 0.04), rgba(5, 5, 5, 0.22));
+.hero-portrait-float { margin-top: 0.75rem; }
+
+@media (min-width: 1024px) {
+  .hero-copy-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 20rem);
+    grid-template-areas: "badges ." "name portrait" "intro ." "cta .";
+    column-gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+
+  .hero-portrait-float {
+    width: min(100%, 20rem);
+    align-self: center;
+    margin: 0;
+  }
 }
 
-.portrait-frame:hover img {
-  filter: grayscale(0.08) saturate(0.95) contrast(1.01) brightness(0.94);
-  transform: scale(1.012);
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .hero-portrait-float { animation: portrait-float 6s ease-in-out infinite alternate; animation-play-state: paused; }
+  #top[data-portrait-active="true"] .hero-portrait-float { animation-play-state: running; }
 }
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .hero-portrait-hover:hover { transform: scale(1.015); }
+  .hero-portrait-hover:hover::before { opacity: 0.65; }
+  .hero-portrait-hover:hover .hero-portrait-circle { border-color: var(--line-strong); }
+}
+
+@keyframes portrait-float { to { transform: translateY(-7px); } }
 
 .hero-wavy-dot-field {
   position: absolute;
@@ -667,6 +722,10 @@ section[id] {
 }
 
 @media (max-width: 760px) {
+  .hero-copy-layout {
+    padding-bottom: 13.5rem;
+  }
+
   .hero-soundtrack {
     right: 1rem;
     bottom: 1rem;

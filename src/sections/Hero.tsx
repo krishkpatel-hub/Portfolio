@@ -1,6 +1,6 @@
 import { Code2, Mail, UserRound } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMagnetic } from '../hooks/useMagnetic';
 import type { PersonalDetails } from '../types/portfolio';
 import { ExternalLink } from '../components/ui/ExternalLink';
@@ -18,20 +18,43 @@ const iconMap = {
 
 export function Hero({ personal }: HeroProps) {
   const reducedMotion = useReducedMotion();
+  const sectionRef = useRef<HTMLElement>(null);
   const ctaRef = useRef<HTMLAnchorElement>(null);
   useMagnetic(ctaRef, Boolean(reducedMotion));
 
   const words = personal.name.split(' ');
 
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    let visible = false;
+    const syncAnimation = () => {
+      section.dataset.portraitActive = String(visible && !document.hidden);
+    };
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = Boolean(entry?.isIntersecting);
+      syncAnimation();
+    });
+    observer.observe(section);
+    document.addEventListener('visibilitychange', syncAnimation);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', syncAnimation);
+      delete section.dataset.portraitActive;
+    };
+  }, []);
+
   return (
-    <section id="top" className="relative min-h-screen overflow-hidden pt-16">
+    <section id="top" ref={sectionRef} className="relative min-h-screen overflow-hidden pt-16">
       <HeroSoundtrack reducedMotion={Boolean(reducedMotion)} />
       <div className="absolute inset-x-0 top-28 h-px bg-[color:var(--line-strong)]" aria-hidden="true" />
       <div className="absolute bottom-0 left-0 h-64 w-full bg-gradient-to-t from-black to-transparent" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-[min(1180px,calc(100%-2rem))] flex-col justify-center py-14 pb-44 md:pb-24">
+      <div className="hero-copy-layout relative z-10 mx-auto min-h-[calc(100vh-4rem)] w-[min(1240px,calc(100%-2rem))] py-14 pb-44 md:pb-24">
         <motion.div
-          className="mb-8 flex flex-wrap items-center gap-3"
+          className="hero-badges mb-8 flex flex-wrap items-center gap-3"
           initial={reducedMotion ? false : { opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
@@ -45,7 +68,7 @@ export function Hero({ personal }: HeroProps) {
           </span>
         </motion.div>
 
-        <h1 className="max-w-6xl text-[clamp(4rem,16vw,12.5rem)] font-black uppercase leading-[0.78] tracking-normal text-[var(--text-strong)]">
+        <h1 className="hero-name max-w-6xl text-[clamp(4rem,16vw,12.5rem)] font-black uppercase leading-[0.78] tracking-normal text-[var(--text-strong)]">
           {words.map((word, index) => (
             <motion.span
               className="block overflow-hidden pb-4"
@@ -59,8 +82,24 @@ export function Hero({ personal }: HeroProps) {
           ))}
         </h1>
 
+        <div className="hero-portrait-float">
+          <div className="hero-portrait-hover">
+            <figure className="hero-portrait-circle">
+              <img
+                src="/krish-patel-profile.png"
+                alt="Portrait of Krish Patel"
+                width={1456}
+                height={1534}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
+            </figure>
+          </div>
+        </div>
+
         <motion.div
-          className="mt-8 grid max-w-4xl gap-8 md:grid-cols-[1fr_auto]"
+          className="hero-intro mt-8 grid max-w-4xl gap-8 md:grid-cols-[1fr_auto]"
           initial={reducedMotion ? false : { opacity: 0, y: 26 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
@@ -90,7 +129,7 @@ export function Hero({ personal }: HeroProps) {
         </motion.div>
 
         <motion.div
-          className="mt-12 flex flex-wrap items-center gap-4"
+          className="hero-cta mt-12 flex flex-wrap items-center gap-4"
           initial={reducedMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.72 }}
