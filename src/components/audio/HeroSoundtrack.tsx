@@ -62,16 +62,6 @@ function isAutoplayBlockedError(error: unknown) {
   return error instanceof Error && error.message === 'AudioContext resume timed out';
 }
 
-function focusPlaylistTrack(button: HTMLButtonElement | null, list: HTMLDivElement | null) {
-  if (!button || !list) return;
-  button.focus({ preventScroll: true });
-  // Scroll only the playlist; scrollIntoView also moves the sticky hero's document.
-  const itemBounds = button.getBoundingClientRect();
-  const listBounds = list.getBoundingClientRect();
-  if (itemBounds.top < listBounds.top) list.scrollTop += itemBounds.top - listBounds.top;
-  else if (itemBounds.bottom > listBounds.bottom) list.scrollTop += itemBounds.bottom - listBounds.bottom;
-}
-
 export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -122,7 +112,7 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   const closePlaylist = useCallback((restoreFocus = true) => {
     setPlaylistOpen(false);
     if (restoreFocus) {
-      window.requestAnimationFrame(() => playlistToggleRef.current?.focus({ preventScroll: true }));
+      window.requestAnimationFrame(() => playlistToggleRef.current?.focus());
     }
   }, [setPlaylistOpen]);
 
@@ -173,12 +163,12 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   useEffect(() => {
     if (!playlistOpen) return;
 
-    const frame = window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       const selectedButton = trackButtonRefs.current[currentIndexRef.current];
-      focusPlaylistTrack(selectedButton, trackListRef.current);
+      selectedButton?.focus({ preventScroll: true });
+      selectedButton?.scrollIntoView({ block: 'nearest' });
       if (!selectedButton) trackListRef.current?.focus({ preventScroll: true });
     });
-    return () => window.cancelAnimationFrame(frame);
   }, [playlistOpen]);
 
   useEffect(() => {
@@ -545,7 +535,8 @@ export function HeroSoundtrack({ reducedMotion }: HeroSoundtrackProps) {
   }, []);
 
   const focusTrack = (index: number) => {
-    focusPlaylistTrack(trackButtonRefs.current[index], trackListRef.current);
+    trackButtonRefs.current[index]?.focus();
+    trackButtonRefs.current[index]?.scrollIntoView({ block: 'nearest' });
   };
 
   const handleTrackListKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
