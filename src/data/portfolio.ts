@@ -170,10 +170,10 @@ export const portfolioData: PortfolioData = {
       description:
         'Built production software across warehouse management, food-service management, reporting, and deployment support workflows.',
       achievements: [
+        'Built a Python lead-scoring pipeline using scikit-learn, HDBSCAN, LightGBM, FastAPI, and PostgreSQL; ranked 500+ prospective clients by similarity to existing clients, improving top-50 precision over a K-means baseline.',
         'Built client-facing React interfaces, Node.js/Express.js REST APIs, and backend integrations for 5+ enterprise clients; reduced support requests by 25% and content-update turnaround by 35%.',
         'Designed MongoDB data models and optimized SQL/ETL reporting pipelines for 200K+ monthly transactions; built dashboards for inventory and revenue analysis, reducing manual analyst review by 40%.',
         'Investigated production issues across React, Express.js, MongoDB, and SQL; performed root-cause analysis and tested fixes across 10+ production deployments, reducing average issue-resolution time by 35%.',
-        'Built a Python lead-scoring pipeline using scikit-learn, HDBSCAN, LightGBM, FastAPI, and PostgreSQL; ranked 500+ prospective clients by similarity to existing clients, improving top-50 precision over a K-means baseline.',
       ],
       technologies: ['React', 'Node.js', 'Express.js', 'MongoDB', 'Python', 'SQL', 'Postman'],
       metrics: ['25% FEWER SUPPORT REQUESTS', '35% LESS CONTENT-UPDATE TIME', '40% LESS MANUAL REVIEW'],
@@ -186,10 +186,10 @@ export const portfolioData: PortfolioData = {
       description:
         'Built an accounting and advisory web platform with LLM-powered inquiry routing, traceable case summaries, and protected client workflows.',
       achievements: [
-        'Built RFF Books, an AI-assisted accounting platform, using React, TypeScript, Node.js, and PostgreSQL; integrated transaction categorization, anomaly detection, and natural-language queries, with row-level security to isolate client data and validation and human review for sensitive accounting actions.',
         'Integrated an LLM chatbot and multi-step agentic workflows to answer service questions, classify client intent, validate outputs, and route unresolved inquiries to the right team member, making inquiry handling approximately 4× faster.',
         'Built a retrieval-augmented generation (RAG) pipeline that retrieved information across repositories and generated structured case summaries with traceable source citations, making case preparation approximately 2× faster.',
         'Trained and evaluated a multi-label client-classification model with scikit-learn across ROC, income-tax/audit, and GST workflows; a Decision Tree improved macro-F1 by 7% over a Logistic Regression baseline, with interpretable rules for accountants.',
+        'Built RFF Books, an AI-assisted accounting platform, using React, TypeScript, Node.js, and PostgreSQL; integrated transaction categorization, anomaly detection, and natural-language queries, with row-level security to isolate client data and validation and human review for sensitive accounting actions.',
       ],
       technologies: ['TypeScript', 'React', 'Node.js', 'PostgreSQL', 'Python', 'scikit-learn', 'OpenAI', 'RAG'],
       metrics: ['≈4× FASTER INQUIRY HANDLING', '≈2× FASTER CASE PREPARATION'],
