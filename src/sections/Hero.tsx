@@ -82,19 +82,21 @@ export function Hero({ personal }: HeroProps) {
           ))}
         </h1>
 
-        <div className="hero-portrait-float">
-          <div className="hero-portrait-hover">
-            <figure className="hero-portrait-circle">
-              <img
-                src="/krish-patel-profile.png"
-                alt="Portrait of Krish Patel"
-                width={1456}
-                height={1534}
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
-              />
-            </figure>
+        <div className="hero-portrait-area">
+          <div className="hero-portrait-float">
+            <div className="hero-portrait-hover">
+              <figure className="hero-portrait-circle">
+                <img
+                  src="/krish-patel-profile.png"
+                  alt="Portrait of Krish Patel"
+                  width={1456}
+                  height={1534}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                />
+              </figure>
+            </div>
           </div>
         </div>
 
