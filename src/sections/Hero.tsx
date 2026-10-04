@@ -19,6 +19,7 @@ const iconMap = {
 export function Hero({ personal }: HeroProps) {
   const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
+  const portraitAreaRef = useRef<HTMLDivElement>(null);
   const ctaRef = useRef<HTMLAnchorElement>(null);
   useMagnetic(ctaRef, Boolean(reducedMotion));
 
@@ -26,9 +27,99 @@ export function Hero({ personal }: HeroProps) {
 
   useEffect(() => {
     const section = sectionRef.current;
-    if (!section) return;
+    const area = portraitAreaRef.current;
+    if (!section || !area) return;
+
+    type Bounds = { left: number; top: number; right: number; bottom: number };
+    const intersects = (first: Bounds, second: Bounds) =>
+      first.left < second.right && first.right > second.left && first.top < second.bottom && first.bottom > second.top;
+    const trackedElements = [
+      ...section.querySelectorAll<HTMLElement>('.hero-badges > span, .hero-intro p, .hero-intro a, .hero-cta a, .hero-soundtrack'),
+      ...section.querySelectorAll<HTMLElement>('.hero-name span'),
+    ];
+    const header = document.querySelector<HTMLElement>('[data-site-header]');
+
+    const measureMovement = () => {
+      const hero = section.getBoundingClientRect();
+      const portrait = area.getBoundingClientRect();
+      const desktop = window.innerWidth >= 1024;
+      const hoverPadding = desktop ? 16 : 2;
+      const edgePadding = 18;
+      const desiredX = desktop
+        ? Math.min(60, Math.max(40, 40 + (window.innerWidth - 1280) / 32))
+        : window.innerWidth >= 768 ? 16 : Math.min(9, Math.max(6, window.innerWidth * 0.02));
+      const desiredY = desktop
+        ? Math.min(45, Math.max(30, 30 + (window.innerWidth - 1280) * 0.0234375))
+        : window.innerWidth >= 768 ? 12 : Math.min(8, Math.max(5, window.innerWidth * 0.016));
+      const bounds = {
+        left: Math.min(desiredX, Math.max(0, portrait.left - hero.left - edgePadding)),
+        right: Math.min(desiredX, Math.max(0, hero.right - portrait.right - edgePadding)),
+        up: Math.min(desiredY, Math.max(0, portrait.top - hero.top - (header?.offsetHeight ?? 0) - edgePadding)),
+        down: Math.min(desiredY, Math.max(0, hero.bottom - portrait.bottom - edgePadding)),
+      };
+      const obstacles: Bounds[] = trackedElements.map((element) => {
+        if (element.matches('.hero-name span')) {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          const text = range.getBoundingClientRect();
+          const transform = window.getComputedStyle(element).transform;
+          const entranceOffset = transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m42;
+          return { left: text.left, right: text.right, top: text.top - entranceOffset, bottom: text.bottom - entranceOffset };
+        }
+        return element.getBoundingClientRect();
+      }).filter((obstacle) => obstacle.right > obstacle.left && obstacle.bottom > obstacle.top);
+      if (header) {
+        obstacles.push({ left: hero.left, right: hero.right, top: hero.top, bottom: hero.top + header.offsetHeight });
+      }
+
+      for (const obstacle of obstacles) {
+        if (obstacle.left < portrait.right && obstacle.right > portrait.left) {
+          if (obstacle.bottom <= portrait.top) {
+            const gap = portrait.top - obstacle.bottom;
+            bounds.up = Math.min(bounds.up, Math.max(0, gap - Math.min(16, gap)));
+          } else if (obstacle.top >= portrait.bottom) {
+            const gap = obstacle.top - portrait.bottom;
+            bounds.down = Math.min(bounds.down, Math.max(0, gap - Math.min(16, gap)));
+          }
+        }
+      }
+
+      // The drift stays in upper-left and lower-right lobes, leaving the social-link corner clear.
+      const pathIsClear = (scale: number) => {
+        const upperLeft = {
+          left: portrait.left - bounds.left * scale - hoverPadding,
+          right: portrait.right + hoverPadding,
+          top: portrait.top - bounds.up * scale - hoverPadding,
+          bottom: portrait.bottom + hoverPadding,
+        };
+        const lowerRight = {
+          left: portrait.left - hoverPadding,
+          right: portrait.right + bounds.right * scale + hoverPadding,
+          top: portrait.top - hoverPadding,
+          bottom: portrait.bottom + bounds.down * scale + hoverPadding,
+        };
+        return obstacles.every((obstacle) => !intersects(upperLeft, obstacle) && !intersects(lowerRight, obstacle));
+      };
+      let scale = 1;
+      if (!pathIsClear(scale)) {
+        let low = 0;
+        let high = 1;
+        for (let index = 0; index < 12; index += 1) {
+          const middle = (low + high) / 2;
+          if (pathIsClear(middle)) low = middle;
+          else high = middle;
+        }
+        scale = low;
+      }
+      area.style.setProperty('--portrait-left', `${bounds.left * scale}px`);
+      area.style.setProperty('--portrait-right', `${bounds.right * scale}px`);
+      area.style.setProperty('--portrait-up', `${bounds.up * scale}px`);
+      area.style.setProperty('--portrait-down', `${bounds.down * scale}px`);
+      section.dataset.portraitReady = 'true';
+    };
 
     let visible = false;
+    let cancelled = false;
     const syncAnimation = () => {
       section.dataset.portraitActive = String(visible && !document.hidden);
     };
@@ -37,12 +128,24 @@ export function Hero({ personal }: HeroProps) {
       syncAnimation();
     });
     observer.observe(section);
+    const resizeObserver = new ResizeObserver(measureMovement);
+    resizeObserver.observe(section);
+    resizeObserver.observe(area);
+    trackedElements.forEach((element) => resizeObserver.observe(element));
+    if (header) resizeObserver.observe(header);
     document.addEventListener('visibilitychange', syncAnimation);
+    void document.fonts.ready.then(() => {
+      if (!cancelled) measureMovement();
+    });
+    measureMovement();
 
     return () => {
+      cancelled = true;
       observer.disconnect();
+      resizeObserver.disconnect();
       document.removeEventListener('visibilitychange', syncAnimation);
       delete section.dataset.portraitActive;
+      delete section.dataset.portraitReady;
     };
   }, []);
 
@@ -82,7 +185,7 @@ export function Hero({ personal }: HeroProps) {
           ))}
         </h1>
 
-        <div className="hero-portrait-area">
+        <div ref={portraitAreaRef} className="hero-portrait-area">
           <div className="hero-portrait-float">
             <div className="hero-portrait-hover">
               <figure className="hero-portrait-circle">
