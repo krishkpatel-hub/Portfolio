@@ -42,18 +42,29 @@ export function Hero({ personal }: HeroProps) {
     const measureMovement = () => {
       const hero = section.getBoundingClientRect();
       const portrait = area.getBoundingClientRect();
-      const desktop = window.innerWidth >= 1024;
+      const desktop = window.innerWidth >= 1100;
+      const compact = window.innerWidth >= 700 && !desktop;
       const hoverPadding = desktop ? 16 : 2;
-      const edgePadding = 18;
+      const edgePadding = compact ? 16 : 18;
       const desiredX = desktop
         ? Math.min(60, Math.max(40, 40 + (window.innerWidth - 1280) / 32))
-        : window.innerWidth >= 768 ? 16 : Math.min(9, Math.max(6, window.innerWidth * 0.02));
+        : compact ? Math.min(20, Math.max(12, (window.innerWidth - 700) * 0.02 + 12))
+          : Math.min(9, Math.max(6, window.innerWidth * 0.02));
       const desiredY = desktop
         ? Math.min(45, Math.max(30, 30 + (window.innerWidth - 1280) * 0.0234375))
-        : window.innerWidth >= 768 ? 12 : Math.min(8, Math.max(5, window.innerWidth * 0.016));
+        : compact ? Math.min(14, Math.max(8, (window.innerWidth - 700) * 0.015 + 8))
+          : Math.min(8, Math.max(5, window.innerWidth * 0.016));
+      const layout = area.parentElement?.getBoundingClientRect();
+      const columns = compact && area.parentElement
+        ? window.getComputedStyle(area.parentElement).gridTemplateColumns.split(' ')
+        : [];
+      const columnLeft = compact && layout
+        ? layout.right - Number.parseFloat(columns.at(-1) ?? '0')
+        : hero.left;
+      const columnRight = compact && layout ? layout.right : hero.right;
       const bounds = {
-        left: Math.min(desiredX, Math.max(0, portrait.left - hero.left - edgePadding)),
-        right: Math.min(desiredX, Math.max(0, hero.right - portrait.right - edgePadding)),
+        left: Math.min(desiredX, Math.max(0, portrait.left - columnLeft - edgePadding)),
+        right: Math.min(desiredX, Math.max(0, columnRight - portrait.right - edgePadding)),
         up: Math.min(desiredY, Math.max(0, portrait.top - hero.top - (header?.offsetHeight ?? 0) - edgePadding)),
         down: Math.min(desiredY, Math.max(0, hero.bottom - portrait.bottom - edgePadding)),
       };
@@ -216,7 +227,7 @@ export function Hero({ personal }: HeroProps) {
             <p className="mt-5 max-w-xl text-base leading-7 soft-muted md:text-lg">{personal.availability}</p>
           </div>
 
-          <div className="flex items-end gap-3 md:flex-col md:items-stretch">
+          <div className="hero-social-links flex items-end gap-3 md:flex-col md:items-stretch">
             {personal.socials.map((link) => {
               const Icon = iconMap[link.type];
               return (

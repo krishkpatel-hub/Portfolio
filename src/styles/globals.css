@@ -362,7 +362,7 @@ section[id] {
   transition: filter 420ms ease;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1100px) {
   .hero-copy-layout {
     grid-template-columns: minmax(0, 1fr) minmax(18rem, 20rem);
     grid-template-areas: "badges ." "name portrait" "intro ." "cta .";
@@ -376,7 +376,31 @@ section[id] {
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 700px) and (max-width: 1099px) {
+  #top { min-height: 100svh; }
+
+  .hero-copy-layout {
+    min-height: calc(100svh - 4rem);
+    grid-template-columns: minmax(0, 1fr) clamp(15.5rem, 30vw, 19rem);
+    grid-template-areas: "badges portrait" "name portrait" "intro intro" "cta cta";
+    column-gap: clamp(1rem, 3vw, 2rem);
+    padding-bottom: 10.5rem;
+  }
+
+  .hero-name { font-size: clamp(6.5rem, 15vw, 10.5rem); }
+
+  .hero-portrait-area {
+    width: clamp(11.25rem, 22vw, 14.375rem);
+    align-self: center;
+    justify-self: center;
+    margin: 0;
+  }
+
+  .hero-intro { grid-template-columns: minmax(0, 1fr); row-gap: 1.5rem; }
+  .hero-social-links { flex-direction: row; align-items: center; }
+}
+
+@media (min-width: 1100px) {
   .hero-portrait-area::before {
     top: calc(0px - var(--portrait-up) - 16px);
     right: -16px;
