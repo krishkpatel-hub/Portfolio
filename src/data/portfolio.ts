@@ -252,6 +252,7 @@ export const portfolioData: PortfolioData = {
         'Integrated ElevenLabs speech recognition for hands-free object creation/removal and a TCP bridge with live geometry previews, tracking-loss recovery, and native Undo.',
       ],
       technologies: ['Python', 'Blender API', 'Computer Vision', 'ElevenLabs', 'TCP'],
+      sourceUrl: 'https://github.com/krishkpatel-hub/HackRu',
       award: '2nd Place, HackRU',
     },
     {
