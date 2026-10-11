@@ -243,18 +243,16 @@ export const portfolioData: PortfolioData = {
   ],
   projects: [
     {
-      title: 'Get Jacked Coach',
-      category: 'Full-Stack Fitness Platform',
+      title: 'Air Modeler',
+      category: 'Gesture & Voice-Controlled 3D Modeling',
       description:
-        'An adaptive strength-programming platform that generates personalized workout plans, tracks completed workouts, and adjusts training based on actual performance.',
+        'A real-time Blender interface for hands-free 3D modeling using two-hand gestures and voice commands, with live geometry previews and recovery when hand tracking is lost.',
       achievements: [
-        'Owned architecture, development, testing, and production release of a full-stack strength-training platform serving 30+ users, with responsive React interfaces, workout analytics, and progress-tracking dashboards.',
-        'Built JWT-authenticated Express.js REST APIs, MongoDB data models, and an LLM coaching agent with secure tool calling for workout history, training programs, lift progression, and personalized recommendations.',
-        'Built production infrastructure on AWS with Docker, WebSocket updates, Jest and Playwright tests, GitHub Actions CI/CD, monitoring, and rate limiting.',
+        'Built a real-time Blender interface translating two-hand gestures into object movement, rotation, scaling, and face extrusion, with automatic intent recognition.',
+        'Integrated ElevenLabs speech recognition for hands-free object creation/removal and a TCP bridge with live geometry previews, tracking-loss recovery, and native Undo.',
       ],
-      technologies: ['React', 'Node.js', 'Express.js', 'MongoDB', 'JWT', 'Axios', 'GitHub Actions', 'CI/CD', 'TypeScript', 'AWS', 'Docker', 'WebSockets', 'Jest', 'Playwright'],
-      demoUrl: 'https://www.getjackedcoach.com/',
-      status: 'Live',
+      technologies: ['Python', 'Blender API', 'Computer Vision', 'ElevenLabs', 'TCP'],
+      award: '2nd Place, HackRU',
     },
     {
       title: 'GroundStack',
@@ -273,6 +271,20 @@ export const portfolioData: PortfolioData = {
       sourceLabel: 'GitHub',
       caseStudyUrl: 'https://github.com/krishkpatel-hub/GroundStack/blob/main/docs/CASE_STUDY.md',
       status: 'Release Candidate',
+    },
+    {
+      title: 'Get Jacked Coach',
+      category: 'Full-Stack Fitness Platform',
+      description:
+        'An adaptive strength-programming platform that generates personalized workout plans, tracks completed workouts, and adjusts training based on actual performance.',
+      achievements: [
+        'Owned architecture, development, testing, and production release of a full-stack strength-training platform serving 30+ users, with responsive React interfaces, workout analytics, and progress-tracking dashboards.',
+        'Built JWT-authenticated Express.js REST APIs, MongoDB data models, and an LLM coaching agent with secure tool calling for workout history, training programs, lift progression, and personalized recommendations.',
+        'Built production infrastructure on AWS with Docker, WebSocket updates, Jest and Playwright tests, GitHub Actions CI/CD, monitoring, and rate limiting.',
+      ],
+      technologies: ['React', 'Node.js', 'Express.js', 'MongoDB', 'JWT', 'Axios', 'GitHub Actions', 'CI/CD', 'TypeScript', 'AWS', 'Docker', 'WebSockets', 'Jest', 'Playwright'],
+      demoUrl: 'https://www.getjackedcoach.com/',
+      status: 'Live',
     },
     {
       title: 'TripMate Notifier',

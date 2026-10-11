@@ -79,12 +79,14 @@ export function Projects({ projects, reducedMotion }: ProjectsProps) {
           <article
             key={project.title}
             className="group flex min-h-[520px] flex-col justify-between rounded-lg border border-white/12 bg-[#09090a] p-5 transition duration-300 hover:-translate-y-1 hover:border-white/25 md:w-[min(74vw,720px)] md:p-7"
-            data-cursor={project.demoUrl || project.sourceUrl || project.caseStudyUrl ? 'view' : 'interactive'}
+            data-cursor={project.demoUrl || project.sourceUrl || project.caseStudyUrl ? 'view' : undefined}
           >
             <div>
               <div className="mb-6 flex items-center justify-between gap-3 font-mono text-xs uppercase tracking-normal text-zinc-500">
                 <span>{String(index + 1).padStart(2, '0')} / {project.category}</span>
-                {project.status ? <span className="rounded-full border border-white/12 px-3 py-1 text-zinc-400">{project.status}</span> : null}
+                {project.award || project.status ? (
+                  <span className="rounded-full border border-white/12 px-3 py-1 text-zinc-400">{project.award ?? project.status}</span>
+                ) : null}
               </div>
 
               <div className="mb-7 grid min-h-48 place-items-center overflow-hidden rounded-md border border-white/10 bg-black">

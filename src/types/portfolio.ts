@@ -91,6 +91,7 @@ export interface Project {
   caseStudyUrl?: string;
   demoUrl?: string;
   status?: string;
+  award?: string;
 }
 
 export interface Post {
