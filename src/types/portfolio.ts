@@ -59,6 +59,7 @@ export interface Certification {
 export interface ExperienceEntry {
   company: string;
   role: string;
+  focus?: string;
   dates: string;
   location: string;
   description?: string;

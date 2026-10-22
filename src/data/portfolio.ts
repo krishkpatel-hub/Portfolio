@@ -163,6 +163,18 @@ export const portfolioData: PortfolioData = {
   ],
   experience: [
     {
+      company: 'Rutgers Robert Wood Johnson Medical School — Qasim Lab',
+      role: 'Undergraduate Researcher',
+      focus: 'Machine Learning & Neural Data Analysis',
+      dates: 'October 2026 – Present',
+      location: 'New Brunswick, NJ',
+      achievements: [
+        'Investigating machine-learning methods for predicting memory recall from human intracranial EEG under Professor Salman Qasim, reviewing published approaches using linear and nonlinear signal features.',
+        'Project scope includes Python/pyhctsa feature-extraction pipelines, supervised-classifier comparisons against published baselines, and evaluation across held-out recording sessions.',
+      ],
+      technologies: ['Python', 'pyhctsa', 'Machine Learning', 'Neural Data Analysis'],
+    },
+    {
       company: 'Priorware Solutions',
       role: 'Software Engineering Intern',
       dates: 'September 2025 – June 2026',
