@@ -169,8 +169,8 @@ export const portfolioData: PortfolioData = {
       dates: 'October 2026 – Present',
       location: 'New Brunswick, NJ',
       achievements: [
-        'Investigating machine-learning methods for predicting memory recall from human intracranial EEG under Professor Salman Qasim, reviewing published approaches using linear and nonlinear signal features.',
-        'Project scope includes Python/pyhctsa feature-extraction pipelines, supervised-classifier comparisons against published baselines, and evaluation across held-out recording sessions.',
+        'Conducted a technical audit of published intracranial EEG research comparing Logistic Regression, SVM, and LSTM; reviewed t-SNE dimensionality reduction, ROC-AUC/F1 results, and validation across held-out sessions, identifying inconsistencies in temporal binning and input dimensions.',
+        'Designing an iEEG feature-selection pipeline using pyhctsa and elastic-net (L1/L2) logistic regression to predict later memory recall; investigating regional averaging and representative-electrode selection, targeting ~10 predictors from ~4,000 candidate features per electrode.',
       ],
       technologies: ['Python', 'pyhctsa', 'Machine Learning', 'Neural Data Analysis'],
     },
@@ -182,14 +182,14 @@ export const portfolioData: PortfolioData = {
       description:
         'Built production software across warehouse management, food-service management, reporting, and deployment support workflows.',
       achievements: [
-        'Built a Python lead-scoring pipeline with scikit-learn, HDBSCAN, and LightGBM to rank 500+ target stores; achieved Precision@50 of 0.80 vs. 0.44 for K-means; served predictions through FastAPI.',
-        'Engineered an automated validation harness with DeepEval and GPT-4o to evaluate system-generated outputs, scoring 0.93 faithfulness and filtering unsupported claims.',
-        'Developed React interfaces and Node.js/Express.js REST APIs for 5+ enterprise clients; translated stakeholder requirements into production features that cut support requests and content-update time by 20%.',
-        'Designed MongoDB data models and SQL/ETL pipelines for 200K+ monthly transactions; built inventory and revenue dashboards that reduced manual analyst review by 40%.',
-        'Improved software reliability across 10+ kiosk/POS deployments; collaborated with backend engineers to debug synchronization and duplicate-transaction issues, cutting average issue-resolution time by 35%.',
+        'Shipped React interfaces and Node.js/Express.js REST APIs for 10+ private and food-service clients; translated stakeholder requirements into production features and iterated on client feedback through deployment.',
+        'Debugged idempotency and synchronization issues across 10+ kiosk/POS deployments, improving transaction integrity and production reliability, making average issue resolution 2× faster.',
+        'Designed MongoDB data models and SQL/ETL pipelines for 200K+ monthly transactions; built Power BI dashboards for inventory and revenue analysis, reducing manual analyst review by 40%.',
+        'Built and served a Python lead-scoring pipeline with FastAPI, scikit-learn, HDBSCAN, and LightGBM to rank 500+ stores; achieved Precision@50 of 0.80 vs. 0.44 for K-means.',
+        'Engineered a DeepEval/GPT-4o validation harness to audit generated sales rationales against lead-scoring feature drivers; measured 0.93 faithfulness and flagged unsupported claims.',
       ],
       technologies: ['React', 'Node.js', 'Express.js', 'MongoDB', 'Python', 'SQL'],
-      metrics: ['0.80 PRECISION@50 — VS. 0.44 BASELINE', '0.93 FAITHFULNESS', '20% LESS SUPPORT & CONTENT-UPDATE TIME', '40% LESS MANUAL REVIEW', '35% FASTER ISSUE RESOLUTION'],
+      metrics: ['2× FASTER ISSUE RESOLUTION', '40% LESS MANUAL REVIEW', '0.80 VS. 0.44 PRECISION@50', '0.93 FAITHFULNESS'],
     },
     {
       company: 'Realtime FinanceFix',
@@ -199,13 +199,13 @@ export const portfolioData: PortfolioData = {
       description:
         'Built an accounting and advisory web platform with LLM-powered inquiry routing, traceable case summaries, and protected client workflows.',
       achievements: [
-        'Automated customer inquiry handling with an OpenAI chatbot and multi-step agentic workflows for intent classification, output validation, and routing, making inquiry handling approximately 4× faster.',
-        'Developed a cross-repository data retrieval pipeline that generated structured case summaries using RAG and traceable source citations, making case preparation approximately 2× faster.',
-        'Trained and evaluated a scikit-learn classifier for Registrar of Companies, income-tax/audit, and GST; a Decision Tree improved macro-F1 by 7% over Logistic Regression, with interpretable rules for accountants.',
-        'Built RFF Books with TypeScript, React, Node.js, and PostgreSQL for accounting; integrated transaction categorization, anomaly detection, and natural-language queries with row-level security and human sign-off.',
+        'Built RFF Books with TypeScript, React, Node.js, and PostgreSQL; implemented transaction categorization, anomaly detection, and natural-language queries with row-level security, migrations, and human sign-off.',
+        'Integrated an OpenAI chatbot and multi-step agentic workflows for intent classification, output validation, and inquiry routing, making inquiry handling ~4× faster.',
+        'Developed a cross-repository RAG pipeline to retrieve documents and generate structured case summaries with source citations, making case preparation ~2× faster.',
+        'Trained scikit-learn classifiers for Registrar of Companies, income-tax/audit, and GST; a Decision Tree improved macro-F1 by 7% over Logistic Regression, with interpretable rules for accountants.',
       ],
       technologies: ['TypeScript', 'React', 'Node.js', 'PostgreSQL', 'Python', 'OpenAI'],
-      metrics: ['≈4× FASTER INQUIRY HANDLING', '≈2× FASTER CASE PREPARATION', '7% HIGHER MACRO-F1 VS. BASELINE'],
+      metrics: ['~4× FASTER INQUIRY HANDLING', '~2× FASTER CASE PREPARATION', '7% HIGHER MACRO-F1 VS. LOGISTIC REGRESSION'],
     },
   ],
   leadership: [
@@ -288,7 +288,7 @@ export const portfolioData: PortfolioData = {
       description:
         'An adaptive strength-programming platform that generates personalized workout plans, tracks completed workouts, and adjusts training based on actual performance.',
       achievements: [
-        'Built and deployed a full-stack fitness product for 30+ active users with TypeScript, React, Node.js, and MongoDB; delivered personalized workout plans, strength tracking, and an LLM coach with secure access to workout records.',
+        'Built and deployed a full-stack fitness product with TypeScript, React, Node.js, and MongoDB; delivered personalized workout plans, strength tracking, and an LLM coach with secure access to workout records.',
         'Tested application features with Jest and Playwright; secured REST APIs with JWT authentication, per-user data isolation, and rate limiting; automated deployments using AWS, Docker, and GitHub Actions CI/CD.',
       ],
       technologies: ['TypeScript', 'React', 'Node.js', 'Express.js', 'MongoDB', 'AWS', 'Docker'],
